@@ -66,7 +66,7 @@ module.exports = async function (app) {
     if (app.muteaudio) args.push('--mute-audio');
 
 
-    args.push(path.join("http://localhost:" + settings.port + "/"));
+    args.push("http://localhost:" + settings.port + "/");
 
 
     const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
