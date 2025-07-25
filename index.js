@@ -23,11 +23,8 @@ async function main() {
     const page = await browser.newPage();
     console.log('Browser launched:');
     await page.goto("https://yandex.com.tr/");
-    console.log('Page loaded:', await page.url());
-    await page.click("svg");
+    await page.click("body > main > div.body__container > div.body__view > form > div.search3__inner > div.search3__input-wrapper > div.search3__voice-wrapper > button");
     console.log('Clicked on the search icon');
-    require('fs').writeFileSync("search-results.html", await page.content());
-    require('fs').writeFileSync("search-results.png", await page.screenshot());
 
 
 
