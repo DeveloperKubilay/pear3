@@ -72,7 +72,38 @@ function onMsg(event) {
         window.close();
     } else if (data.type === "reload") {
         window.location.reload();
-    } 
+    } else if (data.type === "type") {
+        const text = data.text || '';
+        const el = document.activeElement;
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+            [...text].forEach(char => {
+                const event = new KeyboardEvent('keydown', {
+                    key: char,
+                    code: char,
+                    charCode: char.charCodeAt(0),
+                    keyCode: char.charCodeAt(0),
+                    which: char.charCodeAt(0),
+                    bubbles: true
+                });
+                el.dispatchEvent(event);
+            });
+            sendMessage(data, { action: 'type', success: true });
+        } else {
+            sendMessage(data, { action: 'type', success: false, error: 'No valid input element' });
+        }
+    } else if (data.type === "directType") {
+        const text = data.text || '';
+        const el = document.activeElement;
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+            const inputEvent = new InputEvent('input', { data: text });
+            el.dispatchEvent(inputEvent);
+            sendMessage(data, { action: 'directType', success: true });
+        } else {
+            sendMessage(data, { action: 'directType', success: false, error: 'No valid input element' });
+        }
+    } else {
+        console.warn('Unknown action:', data.action);
+    }
 
 }
 
