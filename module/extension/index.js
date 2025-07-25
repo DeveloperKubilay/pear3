@@ -52,12 +52,8 @@ function onMsg(event) {
 
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.action === "tabCreated" &&
-        window.location.href.startsWith("http://localhost:8191/") &&
-        window.location.hash.includes("id=")) {
-
-        const id = window.location.hash.split('=')[1];
-        sendMessage({ id }, { action: 'init', id, newid: msg.tabId });
+    if (msg.action === "tabCreated" && window.location.href.startsWith("http://localhost:8191/")) {
+        sendMessage({ id }, { action: 'init', id: window.location.hash?.split('=')[1], newid: msg.tabId });
     }
     console.log("Message received:", msg);
     sendResponse({ ok: true });
