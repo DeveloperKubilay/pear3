@@ -12,7 +12,7 @@
                 "<all_urls>"
             ],
             "js": [
-                "index.js"
+               "html2canvas.min.js", "index.js"
             ]
         }
     ],

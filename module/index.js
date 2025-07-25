@@ -64,9 +64,7 @@ module.exports = async function (app) {
     }
     if (app.muteaudio) args.push('--mute-audio');
 
-
     args.push("http://localhost:8191");
-
 
     const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
     const SettingsJson = fs.readFileSync(path.join(__dirname, 'extension/settings.json'), 'utf-8');
@@ -105,7 +103,6 @@ module.exports = async function (app) {
         console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
-
     exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error executing browser: ${error.message}`);
@@ -137,25 +134,39 @@ module.exports = async function (app) {
         })
     }
 
-
-
     app.newPage = async function () {
         const newTabData = (await asyncSystem({ action: 'newTab' }));
         const id = newTabData.newid;
-        function sendmsg(...args) {
-            return asyncSystem(id, { type: 'click', ...args });
-        }
+
+        const createMethod = (type) => async (...args) => {
+            const command = { type, ...args };
+            let result;
+
+            if (type === 'goto') {
+                command.url = args[0];
+                result = await asyncSystem(id, command, { goto: true });
+            } else {
+                result = await asyncSystem(id, command);
+            }
+
+            if (type == "screenshot" && result.screenshot) return Buffer.from(result.screenshot.split(',').pop(), 'base64');
+
+            if (result[type] !== undefined) {
+                return result[type];
+            }
+
+            return result;
+        };
+
         return {
             id,
-            goto: async function (url) {
-                return asyncSystem(id, { type: 'goto', url }, { goto: true });
-            },
-            url: sendmsg,
-            click: sendmsg,
-            screenshot: sendmsg,
-            content: sendmsg,
-            close: sendmsg,
-            reload: sendmsg,
+            goto: createMethod('goto'),
+            url: createMethod('url'),
+            click: createMethod('click'),
+            screenshot: createMethod('screenshot'),
+            content: createMethod('content'),
+            close: createMethod('close'),
+            reload: createMethod('reload'),
         }
     }
     app.newTab = app.newPage
