@@ -14,12 +14,3 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         chrome.tabs.sendMessage(tab.id, { tabId: tab.id, action: "tabCreated" });
     }
 });
-
-/*
-chrome.tabs.onCreated.addListener((tab) => {
-    chrome.tabs.sendMessage(tab.id, { tabId: tab.id, action: "tabCreated" });
-
-    console.log("Tab created:", tab.id, tab);
-    const hash = tab.url ? tab.url.split('#')[1] || "" : "";
-    fetch("http://localhost:8191/creatednewtab/" + tab.id + "." + hash);
-});*/
