@@ -2,27 +2,28 @@ const Pear = require('./module/index.js');
 async function main() {
     const browser = await Pear({
         cookies: [],
-        userAgent: '',
+        //userAgent: '',
         viewport: {
             width: 1280,
             height: 800
         },
-        args: [
+        /*args: [
             '--no-sandbox'
-        ],
-        profileDir: './profile',
-        port: 8172,
-        incognito: false,
-        proxy: "",
-        nosandbox: true,
+        ],*/
+        //profileDir: './profile',
+        //port: 8172,
+        //incognito: false,
+        //proxy: "",
+        //nosandbox: true,
         muteaudio: false,
-        browserPath: "",
+        //browserPath: "",
         //headless: true,
         //disableGpu: true,
     })
     const page = await browser.newPage();
     await page.goto("https://www.google.com");
-    await page.keyboard.press('Enter');
+     await page.screenshot({ path: "search-results.png" });
+    //await page.keyboard.press('Enter');
     console.log('Page loaded:', page.url());
 
     /*await page.goto('https://www.example.com')

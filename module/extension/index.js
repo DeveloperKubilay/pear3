@@ -14,6 +14,7 @@ fetch(window.location.origin + '/settings.json')
         ws = new WebSocket(`ws://localhost:${settings.port}`);
         ws.onopen = () => {
             console.log('WebSocket connection established');
+            ws.send(JSON.stringify({ id: sessionId, action: 'init' }));
         };
         ws.onmessage = onMsg;
         ws.onerror = (error) => {
@@ -36,7 +37,7 @@ function onMsg(event) {
     console.log('Received message:', data);
     if (data.action === 'newTab') {
         window.open("#id="+data.id, '_blank');
-        return sendMessage(data, { okey: true })
+        return sendMessage(data, { action: false })
     } else if (data.action === 'keypress') {
         const key = data.key;
         const event = new KeyboardEvent('keydown', {
