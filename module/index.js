@@ -90,7 +90,7 @@ module.exports = async function (app) {
             firstConnection = socket;
         }
         socket.on('message', (message) => {
-            if(globalThis.___PearDebug) console.log('Received message:', Buffer(message).toString());
+            if (globalThis.___PearDebug) console.log('Received message:', Buffer(message).toString());
             const data = JSON.parse(message);
             if (data.action === false) return;
             if (data.action === 'init') {
@@ -125,10 +125,14 @@ module.exports = async function (app) {
     async function asyncSystem(session, command, options = {}) {
         if (!command) command = session, session = null;
         return new Promise((resolve, reject) => {
-            if(!options.goto) command.id = id++;
+            if (!options.goto) command.id = id++;
             else command.id = session;
+
             if (!session) firstConnection.send(JSON.stringify(command));
-            else if (connections[session]) connections[session].send(JSON.stringify(command));
+            else if (connections[session]) {
+                command.session = session;
+                connections[session].send(JSON.stringify(command));
+            }
             AsyncPromieses[command.id] = { resolve, reject };
         })
     }
@@ -138,20 +142,20 @@ module.exports = async function (app) {
     app.newPage = async function () {
         const newTabData = (await asyncSystem({ action: 'newTab' }));
         const id = newTabData.newid;
+        function sendmsg(...args) {
+            return asyncSystem(id, { type: 'click', ...args });
+        }
         return {
             id,
             goto: async function (url) {
                 return asyncSystem(id, { type: 'goto', url }, { goto: true });
             },
-            url: async function () {
-                return asyncSystem(id, { type: 'url' });
-            },
-            screenshot: async function (options) {
-                return asyncSystem(id, { type: 'screenshot', options });
-            },
-            evaluate: async function (fn, ...args) {
-                return asyncSystem(id, { type: 'evaluate', fn: fn.toString(), args });
-            },
+            url: sendmsg,
+            click: sendmsg,
+            screenshot: sendmsg,
+            content: sendmsg,
+            close: sendmsg,
+            reload: sendmsg,
         }
     }
     app.newTab = app.newPage

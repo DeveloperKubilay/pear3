@@ -48,7 +48,32 @@ function onMsg(event) {
         window.location.href = url;
     } else if (data.type === 'reload') {
         window.location.reload();
-    }
+    } else if (data.type === 'click') {
+        try {
+            const element = document.querySelector(data[0]);
+            element.click();
+            sendMessage(data, { action: 'click', success: true });
+        } catch {
+            sendMessage(data, { action: 'click', success: false  });
+        }
+    }else if(data.type === "url"){
+        sendMessage(data, { action: 'url', url: window.location.href });
+    } else if(data.type === "content"){
+        sendMessage(data, { action: 'content', content: document.documentElement.outerHTML });
+    } else if(data.type === "screenshot"){
+        html2canvas(document.body).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            sendMessage(data, { action: 'screenshot', screenshot: imgData });
+        }).catch(err => {
+            console.error('Screenshot error:', err);
+            sendMessage(data, { action: 'screenshot', error: err.message });
+        });
+    } else if (data.type === 'close') {
+        window.close();
+    } else if (data.type === "reload") {
+        window.location.reload();
+    } 
+
 }
 
 

@@ -23,12 +23,12 @@ async function main() {
     const page = await browser.newPage();
     console.log('Browser launched:');
     await page.goto("https://yandex.com.tr/");
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for the page to load
-    setInterval(() => {
-         page.evaluate(() => {
-            document.querySelector('input[name="text"]').value = 'Puppeteer';
-        });
-    }, 1000);
+    console.log('Page loaded:', await page.url());
+    await page.click("svg");
+    console.log('Clicked on the search icon');
+    require('fs').writeFileSync("search-results.html", await page.content());
+    require('fs').writeFileSync("search-results.png", await page.screenshot());
+
 
 
 
@@ -36,7 +36,7 @@ async function main() {
 
     // await page.screenshot({ path: "search-results.png" });
     //await page.keyboard.press('Enter');
-   // console.log('Page loaded:', await page.url());
+    // console.log('Page loaded:', await page.url());
 
     /*await page.goto('https://www.example.com')
     console.log('Page loaded:', page.url());
