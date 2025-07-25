@@ -15,26 +15,12 @@
         }
     </style>
     <h1>Pear Browser automation</h1>
-    <h3>Pls dont close this tab</h3>
-
-<script>
-    //window.open(window.location.href, '_blank');
-    fetch('./extension/settings.json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('settings.json not found');
-            }
-            return response.json();
-        })
-        .then(settings => {
-            console.log('Settings:', settings);
-            // You can use the settings object here
-        })
-        .catch(error => {
-            console.error('Error loading settings.json:', error);
-        });
-
-
-</script>
+    <h3>Developed by Kubilay</h3>
+    <script>
+        if (window.location.hash.startsWith('#id=')) {
+            const idValue = window.location.hash.substring(4);
+            sessionStorage.setItem('PearSystemid', idValue);
+        }
+    </script>
 </body>
 </html>

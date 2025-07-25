@@ -3,20 +3,9 @@ const { exec } = require("child_process");
 const installer = require('./installer.js');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 module.exports = async function (app) {
-    /*const wss = new ws.Server({ port: app.port });
-    
-    wss.on('connection', (socket) => {
-        console.log('WebSocket client connected');
-        socket.on('message', (message) => {
-            console.log('Received:', message);
-        });
-        socket.on('close', () => {
-            console.log('WebSocket client disconnected');
-        });
-    });*/
-
 
     if (!app.browserPath) {
         if (!fs.existsSync(path.join(__dirname, 'chrome'))) await installer()
@@ -29,7 +18,7 @@ module.exports = async function (app) {
     }
 
     const args = [
-        // `--load-extension="${path.join(__dirname, 'extension')}"`,
+        `--load-extension="${path.join(__dirname, 'extension')}"`,
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-features=Translate",
@@ -77,7 +66,44 @@ module.exports = async function (app) {
     if (app.muteaudio) args.push('--mute-audio');
 
 
-    args.push(path.join(__dirname, 'index.html'));
+    args.push(path.join("http://localhost:" + settings.port + "/"));
+
+
+    const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
+    const SettingsJson = fs.readFileSync(path.join(__dirname, 'extension/settings.json'), 'utf-8');
+    const server = http.createServer((req, res) => {
+        if (req.url === "/") {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(indexHtml);
+        } else if (req.url === "/settings.json") {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(SettingsJson);
+        }
+    });
+
+    const wss = new ws.Server({ server });
+    var firstConnection;
+
+    wss.on('connection', (socket) => {
+        if (!firstConnection) firstConnection = socket;
+        console.log('WebSocket client connected');
+        socket.on('message', (message) => {
+            const data = JSON.parse(message);
+            console.log(data)
+            AsyncPromieses[data.id].resolve(data);
+        });
+        socket.on('close', () => {
+            console.log('WebSocket client disconnected');
+        });
+    });
+
+    server.listen(app.port, () => {
+        console.log(`Using port ${app.port} for WebSocket connections`);
+    });
+
+
+
+
     const child = exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error executing browser: ${error.message}`);
@@ -88,16 +114,35 @@ module.exports = async function (app) {
             return;
         }
     });
+    app.webserver = server;
+    app.wss = wss;
 
-    // PID kodunu almak için:
-    app.browserPid = child.pid;
-    console.log(`Launched browser with PID: ${child.pid}`);
+    let id = 0;
+    const AsyncPromieses = {};
+    async function asyncSystem(session, command) {
+        if(!command) command = session;
+        return new Promise((resolve, reject) => {
+            command.id = id++;
+            firstConnection.send(JSON.stringify(command));
+            AsyncPromieses[command.id] = { resolve, reject };
+        })
+    }
 
-    console.log(app)
 
 
+    app.newPage = async function () {
+        console.log(await asyncSystem({ action: 'newTab' }))
+        return {}
+    }
+    app.newTab = app.newPage
 
-    return [{}, {}]
-
-
+    await new Promise(resolve => {
+        const interval = setInterval(() => {
+            if (firstConnection) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 100);
+    });
+    return app
 }

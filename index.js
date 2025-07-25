@@ -1,8 +1,8 @@
 const Pear = require('./module/index.js');
 async function main() {
-    const [ browser, page] = await Pear({
+    const browser = await Pear({
         cookies: [],
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        userAgent: '',
         viewport: {
             width: 1280,
             height: 800
@@ -20,6 +20,11 @@ async function main() {
         //headless: true,
         //disableGpu: true,
     })
+    const page = await browser.newPage();
+    await page.goto("https://www.google.com");
+    await page.keyboard.press('Enter');
+    console.log('Page loaded:', page.url());
+
     /*await page.goto('https://www.example.com')
     console.log('Page loaded:', page.url());
     await page.close();
