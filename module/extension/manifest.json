@@ -8,9 +8,19 @@
     },
     "content_scripts": [
         {
-            "matches": ["<all_urls>"],
-            "js": ["index.js"]
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "index.js"
+            ]
         }
+    ],
+    "content_security_policy": {
+        "extension_pages": "default-src 'self'; style-src 'self'"
+    },
+    "host_permissions": [
+        "<all_urls>"
     ],
     "permissions": [
         "cookies",
