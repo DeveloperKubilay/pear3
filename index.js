@@ -21,8 +21,24 @@ async function main() {
         //disableGpu: true,
     })
     const page = await browser.newPage();
-    await page.goto("https://www.google.com");
-     await page.screenshot({ path: "search-results.png" });
+    await page.goto("https://yandex.com.tr/");
+    page.evaluate = async (fn, ...args) => {
+        return await browser.newPage().then(async p => {
+            return await p.evaluate(fn, ...args);
+        });
+    };
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for the page to load
+    setInterval(() => {
+         page.evaluate(() => {
+            document.querySelector('input[name="text"]').value = 'Puppeteer';
+        });
+    }, 1000);
+
+
+
+
+
+    // await page.screenshot({ path: "search-results.png" });
     //await page.keyboard.press('Enter');
     console.log('Page loaded:', page.url());
 
@@ -31,7 +47,7 @@ async function main() {
     await page.close();
     await browser.close();
 */
-console.log("loaed")
+    console.log("loaed")
 }
 
 main().then(() => {

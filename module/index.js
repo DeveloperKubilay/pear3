@@ -90,15 +90,13 @@ module.exports = async function (app) {
             firstConnection = socket;
         }
         socket.on('message', (message) => {
+            console.log('Received message:', message);
             const data = JSON.parse(message);
-            if(data.action === false) return;
-            if(data.action === 'init') {
+            if (data.action === false) return;
+            if (data.action === 'init') {
                 connections[data.newid] = socket;
             }
             AsyncPromieses[data?.id]?.resolve(data);
-        });
-        socket.on('close', () => {
-            console.log('WebSocket client disconnected');
         });
     });
 
@@ -106,6 +104,10 @@ module.exports = async function (app) {
         console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
+
+    setInterval(()=>{
+
+    },1000)
 
 
 
@@ -115,8 +117,8 @@ module.exports = async function (app) {
             return;
         }
         if (stderr) {
-            console.error(`Browser stderr: ${stderr}`);
-            app.wss.close();
+            wss.close();
+            server.close();
             return;
         }
     });
@@ -126,11 +128,11 @@ module.exports = async function (app) {
     let id = 0;
     const AsyncPromieses = {};
     async function asyncSystem(session, command) {
-        if(!command) command = session,session = null;
+        if (!command) command = session, session = null;
         return new Promise((resolve, reject) => {
             command.id = id++;
-            if(!session) firstConnection.send(JSON.stringify(command));
-            else if(connections[session]) connections[session].send(JSON.stringify(command));
+            if (!session) firstConnection.send(JSON.stringify(command));
+            else if (connections[session]) connections[session].send(JSON.stringify(command));
             AsyncPromieses[command.id] = { resolve, reject };
         })
     }
@@ -150,7 +152,10 @@ module.exports = async function (app) {
             },
             screenshot: async function (options) {
                 return asyncSystem(id, { type: 'screenshot', options });
-            }
+            },
+            evaluate: async function (fn, ...args) {
+                return asyncSystem(id, { type: 'evaluate', fn: fn.toString(), args });
+            },
         }
     }
     app.newTab = app.newPage
