@@ -38,7 +38,6 @@ module.exports = async function (app) {
             app.cookies = JSON.parse(app.cookies);
         settings.cookies = app.cookies;
     }
-    settings.port = app.port || 8172;
 
     fs.writeFileSync(path.join(__dirname, 'extension/settings.json'), JSON.stringify(settings, null, 2));
 
@@ -66,7 +65,7 @@ module.exports = async function (app) {
     if (app.muteaudio) args.push('--mute-audio');
 
 
-    args.push("http://localhost:" + settings.port + "/");
+    args.push("http://localhost:8191");
 
 
     const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
@@ -78,6 +77,12 @@ module.exports = async function (app) {
         } else if (req.url === "/settings.json") {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(SettingsJson);
+        } else if (req.url.startsWith("/creatednewtab/")) {
+            const tabId = req.url.split("/").pop();
+            console.log(tabId)
+
+            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.end('Tab created notification sent');
         }
     });
 
@@ -103,7 +108,7 @@ module.exports = async function (app) {
         });
     });
 
-    server.listen(settings.port, () => {
+    server.listen(8191, () => {
         console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
@@ -116,7 +121,7 @@ module.exports = async function (app) {
             return;
         }
         if (stderr) {
-            console.error(`Browser stderr: ${stderr}`);
+            app.wss.close();
             return;
         }
     });
