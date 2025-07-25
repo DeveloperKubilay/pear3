@@ -90,25 +90,20 @@ module.exports = async function (app) {
             firstConnection = socket;
         }
         socket.on('message', (message) => {
-            console.log('Received message:', message);
+            if(globalThis.___PearDebug) console.log('Received message:', Buffer(message).toString());
             const data = JSON.parse(message);
             if (data.action === false) return;
             if (data.action === 'init') {
                 connections[data.newid] = socket;
             }
             AsyncPromieses[data?.id]?.resolve(data);
+            delete AsyncPromieses[data?.id];
         });
     });
 
     server.listen(8191, () => {
         console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
-
-
-    setInterval(()=>{
-
-    },1000)
-
 
 
     exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
@@ -127,10 +122,11 @@ module.exports = async function (app) {
 
     let id = 0;
     const AsyncPromieses = {};
-    async function asyncSystem(session, command) {
+    async function asyncSystem(session, command, options = {}) {
         if (!command) command = session, session = null;
         return new Promise((resolve, reject) => {
-            command.id = id++;
+            if(!options.goto) command.id = id++;
+            else command.id = session;
             if (!session) firstConnection.send(JSON.stringify(command));
             else if (connections[session]) connections[session].send(JSON.stringify(command));
             AsyncPromieses[command.id] = { resolve, reject };
@@ -145,7 +141,7 @@ module.exports = async function (app) {
         return {
             id,
             goto: async function (url) {
-                return asyncSystem(id, { type: 'goto', url });
+                return asyncSystem(id, { type: 'goto', url }, { goto: true });
             },
             url: async function () {
                 return asyncSystem(id, { type: 'url' });
