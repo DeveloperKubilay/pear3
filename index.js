@@ -21,12 +21,8 @@ async function main() {
         //disableGpu: true,
     })
     const page = await browser.newPage();
+    console.log('Browser launched:');
     await page.goto("https://yandex.com.tr/");
-    page.evaluate = async (fn, ...args) => {
-        return await browser.newPage().then(async p => {
-            return await p.evaluate(fn, ...args);
-        });
-    };
     await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for the page to load
     setInterval(() => {
          page.evaluate(() => {
@@ -40,7 +36,7 @@ async function main() {
 
     // await page.screenshot({ path: "search-results.png" });
     //await page.keyboard.press('Enter');
-    console.log('Page loaded:', page.url());
+   // console.log('Page loaded:', await page.url());
 
     /*await page.goto('https://www.example.com')
     console.log('Page loaded:', page.url());
