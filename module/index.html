@@ -19,6 +19,7 @@
     <script>
         if (window.location.hash.startsWith('#id=')) {
             const idValue = window.location.hash.substring(4);
+            console.log('Setting PearSystemid to:', idValue);
             sessionStorage.setItem('PearSystemid', idValue);
         }
     </script>

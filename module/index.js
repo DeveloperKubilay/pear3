@@ -83,28 +83,34 @@ module.exports = async function (app) {
 
     const wss = new ws.Server({ server });
     var firstConnection;
+    var connections = {}
 
     wss.on('connection', (socket) => {
-        if (!firstConnection) firstConnection = socket;
-        console.log('WebSocket client connected');
+        if (!firstConnection) {
+            console.log('\x1b[32m%s\x1b[0m', 'PearSystem started');
+            firstConnection = socket;
+        }
         socket.on('message', (message) => {
             const data = JSON.parse(message);
-            console.log(data)
-            AsyncPromieses[data.id].resolve(data);
+            if(data.action === false) return;
+            if(data.action === 'init') {
+                connections[data.id] = socket;
+            }
+            AsyncPromieses[data?.id]?.resolve(data);
         });
         socket.on('close', () => {
             console.log('WebSocket client disconnected');
         });
     });
 
-    server.listen(app.port, () => {
-        console.log(`Using port ${app.port} for WebSocket connections`);
+    server.listen(settings.port, () => {
+        console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
 
 
 
-    const child = exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
+    exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error executing browser: ${error.message}`);
             return;
@@ -120,10 +126,11 @@ module.exports = async function (app) {
     let id = 0;
     const AsyncPromieses = {};
     async function asyncSystem(session, command) {
-        if(!command) command = session;
+        if(!command) command = session,session = null;
         return new Promise((resolve, reject) => {
             command.id = id++;
-            firstConnection.send(JSON.stringify(command));
+            if(!session) firstConnection.send(JSON.stringify(command));
+            else if(connections[session]) connections[session].send(JSON.stringify(command));
             AsyncPromieses[command.id] = { resolve, reject };
         })
     }
@@ -131,8 +138,19 @@ module.exports = async function (app) {
 
 
     app.newPage = async function () {
-        console.log(await asyncSystem({ action: 'newTab' }))
-        return {}
+        const id = (await asyncSystem({ action: 'newTab' })).id;
+        return {
+            id,
+            goto: async function (url) {
+                return asyncSystem(id, { type: 'goto', url });
+            },
+            url: async function () {
+                return asyncSystem(id, { type: 'url' });
+            },
+            screenshot: async function (options) {
+                return asyncSystem(id, { type: 'screenshot', options });
+            }
+        }
     }
     app.newTab = app.newPage
 
