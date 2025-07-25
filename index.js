@@ -17,7 +17,6 @@ async function main() {
         nosandbox: true,
         muteaudio: false,
         browserPath: "",
-        pageSize: 1,
         //headless: true,
         //disableGpu: true,
     })
