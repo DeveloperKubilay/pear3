@@ -1,11 +1,12 @@
 // window.open(window.location.href, '_blank');
 
 let ws = null;
+let wsQueue = [];
 
 ws = new WebSocket(`ws://localhost:8191`);
 ws.onopen = () => {
+    while (wsQueue.length) ws.send(wsQueue.shift());
     console.log('WebSocket connection established');
-   // ws.send(JSON.stringify({ id: sessionId, action: 'init' }));
 };
 ws.onmessage = onMsg;
 ws.onerror = (error) => {
@@ -16,7 +17,12 @@ ws.onclose = () => {
 };
 
 function sendMessage(session, data) {
-    ws.send(JSON.stringify({ id: session.id, ...data }));
+    const msg = JSON.stringify({ id: session.id, ...data });
+    if (ws.readyState === 1) {
+        ws.send(msg);
+    } else {
+        wsQueue.push(msg);
+    }
 }
 
 function onMsg(event) {
@@ -46,8 +52,13 @@ function onMsg(event) {
 
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  // Burada mesajı yakalıyorsun
-  // msg içeriğini kullan, ne istiyorsan yap
-  console.log('Message received:', msg,sender);
-  sendResponse({ ok: true });
+    if (msg.action === "tabCreated" &&
+        window.location.href.startsWith("http://localhost:8191/") &&
+        window.location.hash.includes("id=")) {
+
+        const id = window.location.hash.split('=')[1];
+        sendMessage({ id }, { action: 'init', id, newid: msg.tabId });
+    }
+    console.log("Message received:", msg);
+    sendResponse({ ok: true });
 });

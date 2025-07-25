@@ -77,12 +77,6 @@ module.exports = async function (app) {
         } else if (req.url === "/settings.json") {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(SettingsJson);
-        } else if (req.url.startsWith("/creatednewtab/")) {
-            const tabId = req.url.split("/").pop();
-            console.log(tabId)
-
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
-            res.end('Tab created notification sent');
         }
     });
 
@@ -99,7 +93,7 @@ module.exports = async function (app) {
             const data = JSON.parse(message);
             if(data.action === false) return;
             if(data.action === 'init') {
-                connections[data.id] = socket;
+                connections[data.newid] = socket;
             }
             AsyncPromieses[data?.id]?.resolve(data);
         });
@@ -121,6 +115,7 @@ module.exports = async function (app) {
             return;
         }
         if (stderr) {
+            console.error(`Browser stderr: ${stderr}`);
             app.wss.close();
             return;
         }
@@ -143,7 +138,8 @@ module.exports = async function (app) {
 
 
     app.newPage = async function () {
-        const id = (await asyncSystem({ action: 'newTab' })).id;
+        const newTabData = (await asyncSystem({ action: 'newTab' }));
+        const id = newTabData.newid;
         return {
             id,
             goto: async function (url) {
