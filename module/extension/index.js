@@ -14,6 +14,7 @@ ws.onerror = (error) => {
 };
 ws.onclose = () => {
     console.log('WebSocket connection closed');
+    window.close();
 };
 
 function sendMessage(session, data) {
@@ -52,8 +53,10 @@ function onMsg(event) {
 
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.action === "tabCreated" && window.location.href.startsWith("http://localhost:8191/")) {
-        sendMessage({ id }, { action: 'init', id: window.location.hash?.split('=')[1], newid: msg.tabId });
+    if (msg.action === "tabCreated") {
+        const id = window.location.href.startsWith("http://localhost:8191/") ?
+            window.location.hash?.split('=')[1] : msg.tabId;
+        sendMessage(id, { action: 'init', id: id, newid: msg.tabId });
     }
     console.log("Message received:", msg);
     sendResponse({ ok: true });
