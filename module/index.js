@@ -167,9 +167,15 @@ module.exports = async function (app) {
             content: createMethod('content'),
             close: createMethod('close'),
             reload: createMethod('reload'),
+            type: createMethod('type'),
+            directType: createMethod('directType'),
         }
     }
     app.newTab = app.newPage
+    app.close = function () {
+        wss.close();
+        server.close();
+    }
 
     await new Promise(resolve => {
         const interval = setInterval(() => {
