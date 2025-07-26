@@ -162,6 +162,17 @@ module.exports = async function (app) {
                 command.timeout = options.timeout !== undefined ? options.timeout : 30000;
                 command.checkInterval = options.checkInterval || 100;
                 result = await asyncSystem(id, command);
+            } else if (type === 'uploadFile') {
+                command.selector = args[0]; // File input selector
+                command.filePath = args[1]; // File path to upload
+                result = await asyncSystem(id, command);
+            } else if (type === 'getAttribute') {
+                command.selector = args[0]; // CSS selector
+                command.attribute = args[1]; // Attribute name
+                result = await asyncSystem(id, command);
+            } else if (type === 'getText') {
+                command.selector = args[0]; // CSS selector
+                result = await asyncSystem(id, command);
             } else {
                 result = await asyncSystem(id, command);
             }
@@ -187,6 +198,9 @@ module.exports = async function (app) {
             type: createMethod('type'),
             directType: createMethod('directType'),
             waitForSelector: createMethod('waitForSelector'),
+            uploadFile: createMethod('uploadFile'),
+            getAttribute: createMethod('getAttribute'),
+            getText: createMethod('getText'),
         }
     }
     app.newTab = app.newPage

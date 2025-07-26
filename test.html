@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pear Test - File Upload & WaitForSelector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-section h2 {
+            color: #ffeb3b;
+            margin-bottom: 15px;
+        }
+        
+        input, textarea, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .dynamic-content {
+            display: none;
+            padding: 20px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 10px;
+            margin-top: 20px;
+            animation: slideIn 0.5s ease-in-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+        
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            color: #2196f3;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍐 Pear Test Sayfası</h1>
+        
+        <!-- Temel Input Testleri -->
+        <div class="test-section">
+            <h2>📝 Temel Input Testleri</h2>
+            <input type="text" id="inputField" placeholder="Buraya yazı yazın (directType ve type test)">
+            <textarea id="textArea" placeholder="Textarea test alanı" rows="3"></textarea>
+            <button onclick="clearInputs()">Temizle</button>
+        </div>
+        
+        <!-- File Upload Testleri -->
+        <div class="test-section">
+            <h2>📁 File Upload Testleri</h2>
+            <label for="fileInput">Tek Dosya Yükleme:</label>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.png">
+            
+            <label for="multipleFiles">Çoklu Dosya Yükleme:</label>
+            <input type="file" id="multipleFiles" multiple accept="*/*">
+            
+            <label for="imageOnly">Sadece Resim:</label>
+            <input type="file" id="imageOnly" accept="image/*">
+            
+            <div id="fileInfo" class="file-info"></div>
+            <button onclick="showFileInfo()">Dosya Bilgilerini Göster</button>
+        </div>
+        
+        <!-- WaitForSelector Testleri -->
+        <div class="test-section">
+            <h2>⏱️ WaitForSelector Testleri</h2>
+            <button onclick="showDelayedContent(3000)" id="btn3sec">3 Saniye Sonra Element Göster</button>
+            <button onclick="showDelayedContent(5000)" id="btn5sec">5 Saniye Sonra Element Göster</button>
+            <button onclick="showDelayedContent(10000)" id="btn10sec">10 Saniye Sonra Element Göster</button>
+            
+            <div id="delayedContent" class="dynamic-content">
+                <h3>🎉 Dinamik İçerik Yüklendi!</h3>
+                <p>Bu içerik belirli bir süre sonra gösterildi.</p>
+                <input type="text" id="delayedInput" placeholder="Bu input gecikme ile yüklendi">
+            </div>
+        </div>
+        
+        <!-- getAttribute ve getText Testleri -->
+        <div class="test-section">
+            <h2>🔍 Attribute ve Text Testleri</h2>
+            <div id="testDiv" data-test="test-value" class="test-class">
+                Bu div'in içinde test metni var
+            </div>
+            <button onclick="updateTestDiv()" id="updateBtn">Test Div'ini Güncelle</button>
+            <p id="hiddenText" style="display: none;">Bu gizli bir metin</p>
+        </div>
+        
+        <!-- Durum Göstergeleri -->
+        <div class="test-section">
+            <h2>📊 Test Durumu</h2>
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        // Dosya input değişikliklerini dinle
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            updateFileInfo();
+        });
+        
+        document.getElementById('multipleFiles').addEventListener('change', function(e) {
+            updateFileInfo();
+        });
+        
+        document.getElementById('imageOnly').addEventListener('change', function(e) {
+            updateFileInfo();
+        });
+        
+        function updateFileInfo() {
+            const fileInfo = document.getElementById('fileInfo');
+            const inputs = ['fileInput', 'multipleFiles', 'imageOnly'];
+            let info = '';
+            
+            inputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input.files.length > 0) {
+                    info += `<strong>${inputId}:</strong><br>`;
+                    for (let i = 0; i < input.files.length; i++) {
+                        const file = input.files[i];
+                        info += `📄 ${file.name} (${(file.size / 1024).toFixed(2)} KB)<br>`;
+                    }
+                    info += '<br>';
+                }
+            });
+            
+            if (info) {
+                fileInfo.innerHTML = info;
+                fileInfo.style.display = 'block';
+                addStatus('Dosya(lar) seçildi', 'success');
+            } else {
+                fileInfo.style.display = 'none';
+            }
+        }
+        
+        function showFileInfo() {
+            updateFileInfo();
+            addStatus('Dosya bilgileri güncellendi', 'info');
+        }
+        
+        function clearInputs() {
+            document.getElementById('inputField').value = '';
+            document.getElementById('textArea').value = '';
+            addStatus('Input alanları temizlendi', 'info');
+        }
+        
+        function showDelayedContent(delay) {
+            const content = document.getElementById('delayedContent');
+            const btn = event.target;
+            
+            // Butonu devre dışı bırak ve loading göster
+            btn.disabled = true;
+            btn.innerHTML = `<span class="loading"></span> ${delay/1000} saniye bekleniyor...`;
+            
+            // Önce gizle
+            content.style.display = 'none';
+            
+            addStatus(`${delay/1000} saniye sonra içerik görünecek...`, 'info');
+            
+            setTimeout(() => {
+                content.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = `${delay/1000} Saniye Sonra Element Göster`;
+                addStatus(`Dinamik içerik ${delay/1000} saniye sonra yüklendi!`, 'success');
+            }, delay);
+        }
+        
+        function updateTestDiv() {
+            const div = document.getElementById('testDiv');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            div.setAttribute('data-test', `updated-${timestamp}`);
+            div.innerHTML = `Bu div ${timestamp} saatinde güncellendi!`;
+            div.className = 'test-class updated';
+            
+            addStatus('Test div güncellendi', 'success');
+        }
+        
+        function addStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const statusElement = document.createElement('div');
+            statusElement.className = `status ${type}`;
+            statusElement.innerHTML = `[${timestamp}] ${message}`;
+            
+            statusDiv.appendChild(statusElement);
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+            
+            // Konsola da yazdır
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        // Sayfa yüklendiğinde
+        window.addEventListener('load', function() {
+            addStatus('Test sayfası yüklendi', 'success');
+        });
+        
+        // Keyboard eventlerini dinle
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                addStatus(`Enter tuşuna basıldı: ${e.target.id}`, 'info');
+            }
+        });
+    </script>
+</body>
+</html>
