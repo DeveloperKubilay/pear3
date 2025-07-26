@@ -22,10 +22,10 @@ async function main() {
     })
     const page = await browser.newPage();
     console.log('Browser launched:');
-    await page.goto("https://yandex.com.tr/");
+    await page.goto("http://localhost/test.html");
      console.log('Clicked on the search icon');
-     await page.directType("#text",'Hello World');
-     await page.type("#text",'Hello World');
+     await page.directType("#inputField",'Hello World');
+     await page.type("#inputField",'Hello World2');
 
      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds to see the input
      browser.close()

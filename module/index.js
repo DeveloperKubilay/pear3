@@ -139,12 +139,29 @@ module.exports = async function (app) {
         const id = newTabData.newid;
 
         const createMethod = (type) => async (...args) => {
-            const command = { type, ...args };
+            const command = { type };
             let result;
 
             if (type === 'goto') {
                 command.url = args[0];
                 result = await asyncSystem(id, command, { goto: true });
+            } else if (type === 'click') {
+                command[0] = args[0]; // CSS selector for click
+                result = await asyncSystem(id, command);
+            } else if (type === 'type') {
+                command.selector = args[0]; // CSS selector
+                command.text = args[1]; // Text to type
+                result = await asyncSystem(id, command);
+            } else if (type === 'directType') {
+                command.selector = args[0]; // CSS selector
+                command.text = args[1]; // Text to type
+                result = await asyncSystem(id, command);
+            } else if (type === 'waitForSelector') {
+                command.selector = args[0]; // CSS selector
+                const options = args[1] || {}; // Options object
+                command.timeout = options.timeout !== undefined ? options.timeout : 30000;
+                command.checkInterval = options.checkInterval || 100;
+                result = await asyncSystem(id, command);
             } else {
                 result = await asyncSystem(id, command);
             }
@@ -169,6 +186,7 @@ module.exports = async function (app) {
             reload: createMethod('reload'),
             type: createMethod('type'),
             directType: createMethod('directType'),
+            waitForSelector: createMethod('waitForSelector'),
         }
     }
     app.newTab = app.newPage
