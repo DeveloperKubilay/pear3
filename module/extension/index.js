@@ -73,35 +73,142 @@ function onMsg(event) {
     } else if (data.type === "reload") {
         window.location.reload();
     } else if (data.type === "type") {
+        const selector = data.selector;
         const text = data.text || '';
-        const el = document.activeElement;
-        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-            [...text].forEach(char => {
-                el.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));
+        
+        let el;
+        if (selector) {
+            // Seçici kullanılarak element bul
+            try {
+                el = document.querySelector(selector);
+                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+                    el.focus(); // Elemente focus ver
+                } else {
+                    sendMessage(data, { action: 'type', success: false, error: `Element not found or not typeable: ${selector}` });
+                    return;
+                }
+            } catch (error) {
+                sendMessage(data, { action: 'type', success: false, error: `Invalid selector: ${selector}` });
+                return;
+            }
+        } else {
+            // Aktif elementi kullan
+            el = document.activeElement;
+            if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+                sendMessage(data, { action: 'type', success: false, error: 'No valid input element' });
+                return;
+            }
+        }
+        
+        // Yazı yazma işlemi
+        [...text].forEach(char => {
+            el.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));
+            if (el.isContentEditable) {
+                el.innerText += char;
+            } else {
                 el.value += char;
-                el.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true }));
-                el.dispatchEvent(new InputEvent('input', { data: char, bubbles: true }));
-            });
-            sendMessage(data, { action: 'type', success: true });
-        } else {
-            sendMessage(data, { action: 'type', success: false, error: 'No valid input element' });
-        }
+            }
+            el.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true }));
+            el.dispatchEvent(new InputEvent('input', { data: char, bubbles: true }));
+        });
+        sendMessage(data, { action: 'type', success: true });
+        
     } else if (data.type === "directType") {
+        const selector = data.selector;
         const text = data.text || '';
-        const el = document.activeElement;
-        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-            el.value = text;
-            el.dispatchEvent(new InputEvent('input', { data: text, bubbles: true }));
-            sendMessage(data, { action: 'directType', success: true });
+        
+        let el;
+        if (selector) {
+            // Seçici kullanılarak element bul
+            try {
+                el = document.querySelector(selector);
+                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+                    el.focus(); // Elemente focus ver
+                } else {
+                    sendMessage(data, { action: 'directType', success: false, error: `Element not found or not typeable: ${selector}` });
+                    return;
+                }
+            } catch (error) {
+                sendMessage(data, { action: 'directType', success: false, error: `Invalid selector: ${selector}` });
+                return;
+            }
         } else {
-            sendMessage(data, { action: 'directType', success: false, error: 'No valid input element' });
+            // Aktif elementi kullan
+            el = document.activeElement;
+            if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+                sendMessage(data, { action: 'directType', success: false, error: 'No valid input element' });
+                return;
+            }
         }
+        
+        // Direkt yazma işlemi
+        if (el.isContentEditable) {
+            el.innerText = text;
+        } else {
+            el.value = text;
+        }
+        el.dispatchEvent(new InputEvent('input', { data: text, bubbles: true }));
+        sendMessage(data, { action: 'directType', success: true });
+        
+    } else if (data.type === "waitForSelector") {
+        const selector = data.selector;
+        const timeout = data.timeout || 30000; // Default 30 saniye
+        const checkInterval = data.checkInterval || 100; // Default 100ms
+        
+        const startTime = Date.now();
+        
+        const checkElement = () => {
+            try {
+                const element = document.querySelector(selector);
+                if (element) {
+                    // Element bulundu
+                    sendMessage(data, { 
+                        action: 'waitForSelector', 
+                        success: true, 
+                        found: true,
+                        element: {
+                            tagName: element.tagName,
+                            id: element.id,
+                            className: element.className,
+                            textContent: element.textContent?.substring(0, 100) // İlk 100 karakter
+                        }
+                    });
+                    return;
+                }
+                
+                // Timeout kontrolü
+                if (timeout > 0 && Date.now() - startTime > timeout) {
+                    sendMessage(data, { 
+                        action: 'waitForSelector', 
+                        success: false, 
+                        found: false,
+                        error: `Timeout: Element not found after ${timeout}ms`,
+                        selector: selector
+                    });
+                    return;
+                }
+                
+                // Tekrar kontrol et
+                setTimeout(checkElement, checkInterval);
+                
+            } catch (error) {
+                sendMessage(data, { 
+                    action: 'waitForSelector', 
+                    success: false, 
+                    found: false,
+                    error: `Invalid selector: ${selector}`,
+                    originalError: error.message
+                });
+            }
+        };
+        
+        // İlk kontrolü başlat
+        checkElement();
+        
     } else {
         console.warn('Unknown action:', data.action);
     }
-
 }
-
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === "tabCreated") {
