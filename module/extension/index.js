@@ -205,6 +205,136 @@ function onMsg(event) {
         // İlk kontrolü başlat
         checkElement();
         
+    } else if (data.type === "uploadFile") {
+        const selector = data.selector;
+        const filePath = data.filePath;
+        
+        try {
+            const fileInput = document.querySelector(selector);
+            
+            if (!fileInput || fileInput.type !== 'file') {
+                sendMessage(data, { 
+                    action: 'uploadFile', 
+                    success: false, 
+                    error: `File input not found or invalid: ${selector}` 
+                });
+                return;
+            }
+            
+            // Dosya yolu ile DataTransfer oluştur
+            fetch(filePath)
+                .then(response => response.blob())
+                .then(blob => {
+                    const fileName = filePath.split('/').pop() || 'uploaded-file';
+                    const file = new File([blob], fileName, { type: blob.type });
+                    
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Change event'ini tetikle
+                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    sendMessage(data, { 
+                        action: 'uploadFile', 
+                        success: true,
+                        fileName: fileName,
+                        fileSize: file.size
+                    });
+                })
+                .catch(error => {
+                    // Yerel dosya yolu ise farklı yaklaşım
+                    if (filePath.startsWith('file://') || !filePath.startsWith('http')) {
+                        // Tarayıcı güvenlik kısıtlamaları nedeniyle yerel dosya erişimi sınırlı
+                        sendMessage(data, { 
+                            action: 'uploadFile', 
+                            success: false, 
+                            error: `Cannot access local file: ${filePath}. Use URL or base64 data.` 
+                        });
+                    } else {
+                        sendMessage(data, { 
+                            action: 'uploadFile', 
+                            success: false, 
+                            error: `Failed to load file: ${error.message}` 
+                        });
+                    }
+                });
+                
+        } catch (error) {
+            sendMessage(data, { 
+                action: 'uploadFile', 
+                success: false, 
+                error: `Upload error: ${error.message}` 
+            });
+        }
+        
+    } else if (data.type === "getAttribute") {
+        const selector = data.selector;
+        const attribute = data.attribute;
+        
+        try {
+            const element = document.querySelector(selector);
+            
+            if (!element) {
+                sendMessage(data, { 
+                    action: 'getAttribute', 
+                    success: false, 
+                    error: `Element not found: ${selector}` 
+                });
+                return;
+            }
+            
+            const value = element.getAttribute(attribute);
+            
+            sendMessage(data, { 
+                action: 'getAttribute', 
+                success: true,
+                value: value,
+                selector: selector,
+                attribute: attribute
+            });
+            
+        } catch (error) {
+            sendMessage(data, { 
+                action: 'getAttribute', 
+                success: false, 
+                error: `Error getting attribute: ${error.message}` 
+            });
+        }
+        
+    } else if (data.type === "getText") {
+        const selector = data.selector;
+        
+        try {
+            const element = document.querySelector(selector);
+            
+            if (!element) {
+                sendMessage(data, { 
+                    action: 'getText', 
+                    success: false, 
+                    error: `Element not found: ${selector}` 
+                });
+                return;
+            }
+            
+            const text = element.textContent || element.innerText || '';
+            
+            sendMessage(data, { 
+                action: 'getText', 
+                success: true,
+                text: text.trim(),
+                selector: selector
+            });
+            
+        } catch (error) {
+            sendMessage(data, { 
+                action: 'getText', 
+                success: false, 
+                error: `Error getting text: ${error.message}` 
+            });
+        }
+        
     } else {
         console.warn('Unknown action:', data.action);
     }
