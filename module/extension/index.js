@@ -77,15 +77,10 @@ function onMsg(event) {
         const el = document.activeElement;
         if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
             [...text].forEach(char => {
-                const event = new KeyboardEvent('keydown', {
-                    key: char,
-                    code: char,
-                    charCode: char.charCodeAt(0),
-                    keyCode: char.charCodeAt(0),
-                    which: char.charCodeAt(0),
-                    bubbles: true
-                });
-                el.dispatchEvent(event);
+                el.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));
+                el.value += char;
+                el.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true }));
+                el.dispatchEvent(new InputEvent('input', { data: char, bubbles: true }));
             });
             sendMessage(data, { action: 'type', success: true });
         } else {
@@ -95,8 +90,8 @@ function onMsg(event) {
         const text = data.text || '';
         const el = document.activeElement;
         if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-            const inputEvent = new InputEvent('input', { data: text });
-            el.dispatchEvent(inputEvent);
+            el.value = text;
+            el.dispatchEvent(new InputEvent('input', { data: text, bubbles: true }));
             sendMessage(data, { action: 'directType', success: true });
         } else {
             sendMessage(data, { action: 'directType', success: false, error: 'No valid input element' });
