@@ -119,6 +119,7 @@ module.exports = async function (app) {
 
     let id = 0;
     const AsyncPromieses = {};
+    
     async function asyncSystem(session, command, options = {}) {
         if (!command) command = session, session = null;
         return new Promise((resolve, reject) => {
@@ -134,75 +135,146 @@ module.exports = async function (app) {
         })
     }
 
-    app.newPage = async function () {
-        const newTabData = (await asyncSystem({ action: 'newTab' }));
-        const id = newTabData.newid;
+    // Generic method creator for standard operations
+    const createMethod = (type) => (session) => async (...args) => {
+        const command = { type };
+        let result;
 
-        const createMethod = (type) => async (...args) => {
-            const command = { type };
-            let result;
-
-            if (type === 'goto') {
+        switch (type) {
+            case 'goto':
                 command.url = args[0];
-                result = await asyncSystem(id, command, { goto: true });
-            } else if (type === 'click') {
-                command[0] = args[0]; // CSS selector for click
-                result = await asyncSystem(id, command);
-            } else if (type === 'type') {
+                result = await asyncSystem(session, command, { goto: true });
+                break;
+                
+            case 'click':
+                command[0] = args[0]; // CSS selector for legacy click
+                result = await asyncSystem(session, command);
+                break;
+                
+            // Keyboard events
+            case 'keypress':
+            case 'keydown':
+            case 'keyup':
+                command.key = args[0];
+                command.selector = args[1]; // optional selector
+                command.options = args[2] || {}; // optional options
+                result = await asyncSystem(session, command);
+                break;
+                
+            // Mouse events
+            case 'leftclick':
+            case 'rightclick':
+            case 'middleclick':
+            case 'dblclick':
+            case 'mousedown':
+            case 'mouseup':
+            case 'mousemove':
+                command.selector = args[0]; // CSS selector
+                command.options = args[1] || {}; // optional options (x, y, etc.)
+                result = await asyncSystem(session, command);
+                break;
+                
+            case 'scroll':
+                command.selector = args[0]; // optional selector (if null, scrolls window)
+                command.options = args[1] || {}; // { x, y }
+                result = await asyncSystem(session, command);
+                break;
+                
+            case 'type':
+            case 'directType':
                 command.selector = args[0]; // CSS selector
                 command.text = args[1]; // Text to type
-                result = await asyncSystem(id, command);
-            } else if (type === 'directType') {
-                command.selector = args[0]; // CSS selector
-                command.text = args[1]; // Text to type
-                result = await asyncSystem(id, command);
-            } else if (type === 'waitForSelector') {
+                result = await asyncSystem(session, command);
+                break;
+                
+            case 'waitForSelector':
                 command.selector = args[0]; // CSS selector
                 const options = args[1] || {}; // Options object
                 command.timeout = options.timeout !== undefined ? options.timeout : 30000;
                 command.checkInterval = options.checkInterval || 100;
-                result = await asyncSystem(id, command);
-            } else if (type === 'uploadFile') {
+                result = await asyncSystem(session, command);
+                break;
+                
+            case 'uploadFile':
                 command.selector = args[0]; // File input selector
                 command.filePath = args[1]; // File path to upload
-                result = await asyncSystem(id, command);
-            } else if (type === 'getAttribute') {
+                result = await asyncSystem(session, command);
+                break;
+                
+            case 'getAttribute':
                 command.selector = args[0]; // CSS selector
                 command.attribute = args[1]; // Attribute name
-                result = await asyncSystem(id, command);
-            } else if (type === 'getText') {
+                result = await asyncSystem(session, command);
+                break;
+                
+            case 'getText':
                 command.selector = args[0]; // CSS selector
-                result = await asyncSystem(id, command);
-            } else {
-                result = await asyncSystem(id, command);
-            }
+                result = await asyncSystem(session, command);
+                break;
+                
+            default:
+                result = await asyncSystem(session, command);
+        }
 
-            if (type == "screenshot" && result.screenshot) return Buffer.from(result.screenshot.split(',').pop(), 'base64');
+        if (type === "screenshot" && result.screenshot) {
+            return Buffer.from(result.screenshot.split(',').pop(), 'base64');
+        }
 
-            if (result[type] !== undefined) {
-                return result[type];
-            }
+        if (result[type] !== undefined) {
+            return result[type];
+        }
 
-            return result;
-        };
+        return result;
+    };
+
+    app.newPage = async function () {
+        const newTabData = (await asyncSystem({ action: 'newTab' }));
+        const id = newTabData.newid;
 
         return {
             id,
-            goto: createMethod('goto'),
-            url: createMethod('url'),
-            click: createMethod('click'),
-            screenshot: createMethod('screenshot'),
-            content: createMethod('content'),
-            close: createMethod('close'),
-            reload: createMethod('reload'),
-            type: createMethod('type'),
-            directType: createMethod('directType'),
-            waitForSelector: createMethod('waitForSelector'),
-            uploadFile: createMethod('uploadFile'),
-            getAttribute: createMethod('getAttribute'),
-            getText: createMethod('getText'),
+            // Navigation
+            goto: createMethod('goto')(id),
+            url: createMethod('url')(id),
+            reload: createMethod('reload')(id),
+            close: createMethod('close')(id),
+            
+            // Content & Screenshots
+            screenshot: createMethod('screenshot')(id),
+            content: createMethod('content')(id),
+            
+            // Legacy click (maintained for compatibility)
+            click: createMethod('click')(id),
+            
+            // Keyboard events
+            keypress: createMethod('keypress')(id),
+            keydown: createMethod('keydown')(id),
+            keyup: createMethod('keyup')(id),
+            
+            // Mouse events
+            leftclick: createMethod('leftclick')(id),
+            rightclick: createMethod('rightclick')(id),
+            middleclick: createMethod('middleclick')(id),
+            dblclick: createMethod('dblclick')(id),
+            mousedown: createMethod('mousedown')(id),
+            mouseup: createMethod('mouseup')(id),
+            mousemove: createMethod('mousemove')(id),
+            
+            // Scroll
+            scroll: createMethod('scroll')(id),
+            
+            // Text input
+            type: createMethod('type')(id),
+            directType: createMethod('directType')(id),
+            
+            // Utility methods
+            waitForSelector: createMethod('waitForSelector')(id),
+            uploadFile: createMethod('uploadFile')(id),
+            getAttribute: createMethod('getAttribute')(id),
+            getText: createMethod('getText')(id),
         }
     }
+    
     app.newTab = app.newPage
     app.close = function () {
         wss.close();
