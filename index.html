@@ -273,15 +273,16 @@ p code, li code {
         <li><a href="#browser-api" class="nav-link">Browser API</a></li>
         <li><a href="#page-api" class="nav-link">Page API</a></li>
         <li><a href="#mouse-keyboard" class="nav-link">Mouse & Keyboard</a></li>
-        <li><a href="#select-api" class="nav-link">Select API</a></li>
+        <li><a href="#text-input" class="nav-link">Text Input</a></li>
+        <li><a href="#element-api" class="nav-link">Element API</a></li>
         <li><a href="#screenshots" class="nav-link">Screenshots</a></li>
         <li><a href="#file-upload" class="nav-link">File Upload</a></li>
-        <li><a href="#cookies" class="nav-link">Cookies</a></li>
+        <li><a href="#wait-methods" class="nav-link">Wait Methods</a></li>
         <li><a href="#examples" class="nav-link">Examples</a></li>
       </ul>
       <div class="sidebar-footer">
         <p>Made with ❤️ by <a href="https://github.com/developerkubilay">DeveloperKubilay</a></p>
-        <p>v1.0.0</p>
+        <p>v2.0.0</p>
       </div>
     </nav>
 
@@ -290,20 +291,19 @@ p code, li code {
         <h1 style="color: #D70000; font-size: 1.5rem; margin-bottom: 0.5rem;">🚨 Warning</h1>
         <h3 style="margin-top: 0;">This is <strong>not</strong> (Puppeteer or Selenium). It <strong>doesn't use the same API</strong>!</h3>
         <h3>This module runs as a real Chrome extension, making it stealthy and hard to detect.</h3>
-        <h3>It uses a completely separate API to interact with the browser.</h3>
+        <h3>It uses a completely separate API to interact with the browser via WebSocket.</h3>
       </div>
 
       <section id="introduction" class="section">
         <h2>Introduction to pear-browser</h2>
-        <p>pear-browser is a powerful browser automation library for Node.js, similar to Puppeteer but with more direct control over Chrome/Chromium. pear-browser allows you to control the browser programmatically, making it perfect for:</p>
+        <p>pear-browser is a powerful browser automation library for Node.js that provides direct control over Chrome/Chromium through WebSocket communication. Unlike traditional automation tools, pear-browser operates as a Chrome extension, making it:</p>
         <ul>
-          <li>Web scraping and data extraction</li>
-          <li>Automated testing of web applications</li>
-          <li>Capturing screenshots</li>
-          <li>Automating form submission</li>
-          <li>Browser behavior testing</li>
+          <li><strong>Stealthy</strong> - Hard to detect by anti-bot systems</li>
+          <li><strong>Fast</strong> - Direct communication without protocol overhead</li>
+          <li><strong>Reliable</strong> - Real browser environment, not headless simulation</li>
+          <li><strong>Feature-rich</strong> - Full access to modern web APIs</li>
         </ul>
-        <p>pear-browser works by launching a Chrome instance and communicating with it via WebSocket, allowing fine-grained control over browser actions and page interactions.</p>
+        <p>Perfect for web scraping, automated testing, form automation, and browser behavior analysis.</p>
       </section>
 
       <section id="installation" class="section">
@@ -312,24 +312,31 @@ p code, li code {
         <pre><code class="language-bash">npm install pear-browser</code></pre>
         
         <div class="info-box">
-          <h4>Note:</h4>
-          <p>pear-browser requires a Chrome or Chromium installation. You can use your system's Chrome installation or let pear-browser download and use a bundled Chromium version.</p>
+          <h4>Requirements:</h4>
+          <p>pear-browser requires Chrome or Chromium. It can automatically download Chromium or use your system's Chrome installation.</p>
         </div>
       </section>
 
       <section id="getting-started" class="section">
         <h2>Getting Started</h2>
-        <p>Here's a simple example to get started with pear-browser:</p>
-        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+        <p>Basic usage example:</p>
+        <pre><code class="language-javascript">const Pear = require("pear3");
 
 async function main() {
-  const browser = await pearBrowser({
-    useChromium: true
+  const browser = await Pear({
+    viewport: { width: 1280, height: 800 },
+    headless: false
   });
 
-  const page = await browser.newPage("https://www.google.com");
-
-  await page.screenshot({ path: "search-results.png" });
+  const page = await browser.newPage();
+  await page.goto("https://google.com");
+  
+  // Type in search box
+  await page.directType('textarea', 'Hello Pear!');
+  await page.keypress('Enter');
+  
+  // Take screenshot
+  const screenshot = await page.screenshot();
   
   await browser.close();
 }
@@ -340,329 +347,360 @@ main().catch(console.error);</code></pre>
       <section id="browser-api" class="section">
         <h2>Browser API</h2>
         <h3>Initialization Options</h3>
-        <p>When initializing pear-browser, you can provide the following options:</p>
-        <pre><code class="language-javascript">const browser = await pear-browser({
-  browserPath: "path/to/chrome",  // Custom Chrome path
-  profileDir: "./profile",        // Chrome profile directory
-  args: ["--disable-gpu"],        // Additional Chrome arguments
-  debug: false,                   // Enable debug logging
-  useragent: "Custom User Agent", // Set a custom user agent
-  viewport: { width: 1280, height: 720 }, // Default viewport
-  port: 9876,                     // WebSocket port
-  incognito: false,               // Use incognito mode
-  autoclose: false,               // Close when WebSocket disconnects
-  server: httpServer,             // Custom HTTP server
-  proxy: "http://proxy:8080",     // Use proxy
-  nosandbox: false,               // Disable sandbox
-  muteaudio: false,               // Mute audio
-  useChromium: false,             // Use bundled Chromium
+        <p>Configure pear-browser with these options:</p>
+        <pre><code class="language-javascript">const browser = await Pear({
+  browserPath: "/path/to/chrome",       // Custom Chrome executable path
+  profileDir: "./chrome-profile",      // Chrome user data directory
+  args: ["--disable-gpu"],             // Additional Chrome arguments
+  userAgent: "Custom User Agent",      // Set custom user agent
+  viewport: { width: 1280, height: 720 }, // Default viewport size
+  incognito: false,                    // Use incognito mode
+  headless: false,                     // Run in headless mode
+  disableGpu: false,                   // Disable GPU acceleration
+  nosandbox: false,                    // Disable sandbox (Linux)
+  proxy: "http://proxy:8080",          // Proxy server
+  muteaudio: false,                    // Mute audio
+  cookies: cookieArray                 // Pre-load cookies
 });</code></pre>
 
         <h3>Browser Methods</h3>
         <ul class="method-list">
           <li>
-            <span class="method-name">.newPage(url, options)</span>
-            <p>Opens a new tab with the specified URL. Returns a Page object.</p>
-            <p>Options:</p>
-            <ul>
-              <li><code>dontwaitLoad</code>: Don't wait for page to load</li>
-            </ul>
+            <span class="method-name">.newPage()</span>
+            <p>Creates a new page (tab) and returns a Page object for interaction.</p>
+          </li>
+          <li>
+            <span class="method-name">.newTab()</span>
+            <p>Alias for <code>newPage()</code>. Creates a new tab.</p>
           </li>
           <li>
             <span class="method-name">.close()</span>
-            <p>Closes the browser instance and all open tabs.</p>
-          </li>
-          <li>
-            <span class="method-name">.setUserAgent(userAgent)</span>
-            <p>Sets the user agent for all pages.</p>
-          </li>
-          <li>
-            <span class="method-name">.getCookies(domain)</span>
-            <p>Gets cookies for the specified domain.</p>
-          </li>
-          <li>
-            <span class="method-name">.getAllCookies()</span>
-            <p>Gets all browser cookies.</p>
-          </li>
-          <li>
-            <span class="method-name">.setCookies(cookies)</span>
-            <p>Sets browser cookies.</p>
+            <p>Closes the browser instance and all associated resources.</p>
           </li>
         </ul>
-
-        <h3>Browser Events</h3>
-        <p>pear-browser emits events you can listen to:</p>
-        <pre><code class="language-javascript">browser.on("tabcreated", (tab) => {
-  console.log("New tab created:", tab);
-});</code></pre>
       </section>
 
       <section id="page-api" class="section">
         <h2>Page API</h2>
-        <p>The Page API provides methods to interact with web pages.</p>
+        <p>Core page navigation and content methods:</p>
         
         <ul class="method-list">
           <li>
-            <span class="method-name">.evaluate(fn, ...args)</span>
-            <p>Evaluates a function in the browser context and returns the result.</p>
-            <pre><code class="language-javascript">const result = await page.evaluate((a, b) => {
-  return a + b;
-}, 5, 10); // Returns 15</code></pre>
+            <span class="method-name">.goto(url)</span>
+            <p>Navigate to the specified URL.</p>
+            <pre><code class="language-javascript">await page.goto("https://example.com");</code></pre>
           </li>
           <li>
-            <span class="method-name">.click(selector, options)</span>
-            <p>Clicks on an element matching the selector.</p>
-            <pre><code class="language-javascript">await page.click("#submit-button");</code></pre>
+            <span class="method-name">.url()</span>
+            <p>Get the current page URL.</p>
+            <pre><code class="language-javascript">const currentUrl = await page.url();</code></pre>
           </li>
           <li>
-            <span class="method-name">.focus(selector)</span>
-            <p>Focuses on an element matching the selector.</p>
-            <pre><code class="language-javascript">await page.focus("input[name='username']");</code></pre>
+            <span class="method-name">.reload()</span>
+            <p>Reload the current page.</p>
+            <pre><code class="language-javascript">await page.reload();</code></pre>
           </li>
           <li>
-            <span class="method-name">.type(text) or .type(selector, text)</span>
-            <p>Types text into the focused element or into an element matching the selector.</p>
-            <pre><code class="language-javascript">await page.focus("input[name='username']");
-await page.type("johndoe");
-// Or
-await page.type("input[name='username']", "johndoe");</code></pre>
-          </li>
-          <li>
-            <span class="method-name">.waitForSelector(selector, options)</span>
-            <p>Waits for an element matching the selector to appear in the page.</p>
-            <pre><code class="language-javascript">await page.waitForSelector(".results", { timeout: 5000 });</code></pre>
-          </li>
-          <li>
-            <span class="method-name">.waitForNavigation(options)</span>
-            <p>Waits for navigation to complete after actions like form submission or link clicks.</p>
-            <pre><code class="language-javascript">await page.click("#submit-button");
-await page.waitForNavigation({ timeout: 5000 });</code></pre>
-          </li>
-          <li>
-            <span class="method-name">.waitForTimeout(milliseconds)</span>
-            <p>Waits for the specified amount of time.</p>
-            <pre><code class="language-javascript">await page.waitForTimeout(1000); // Wait for 1 second</code></pre>
-          </li>
-          <li>
-            <span class="method-name">.setViewport(dimensions)</span>
-            <p>Sets the viewport dimensions.</p>
-            <pre><code class="language-javascript">await page.setViewport({ width: 1280, height: 800 });</code></pre>
-          </li>
-          <li>
-            <span class="method-name">.getPageSource()</span>
-            <p>Gets the HTML content of the page.</p>
-            <pre><code class="language-javascript">const html = await page.getPageSource();</code></pre>
+            <span class="method-name">.content()</span>
+            <p>Get the full HTML content of the page.</p>
+            <pre><code class="language-javascript">const html = await page.content();</code></pre>
           </li>
           <li>
             <span class="method-name">.close()</span>
-            <p>Closes the page/tab.</p>
+            <p>Close the current page/tab.</p>
             <pre><code class="language-javascript">await page.close();</code></pre>
           </li>
         </ul>
       </section>
 
       <section id="mouse-keyboard" class="section">
-        <h2>Mouse & Keyboard API</h2>
-        <h3>Mouse</h3>
-        <p>The mouse object provides methods to simulate mouse actions:</p>
-        <pre><code class="language-javascript">// Wheel scroll
-await page.mouse.wheel({ deltaY: -500 }); // Scroll up
-await page.mouse.wheel({ deltaY: 500 });  // Scroll down
+        <h2>Mouse & Keyboard Events</h2>
+        
+        <h3>Keyboard Events</h3>
+        <p>Simulate keyboard interactions with precise control:</p>
+        <pre><code class="language-javascript">// Basic key press (keydown + keyup)
+await page.keypress('Enter');
+await page.keypress('Tab');
+await page.keypress('Escape');
 
-// Click at coordinates
-await page.mouse.click(100, 200);
+// Key down (hold key)
+await page.keydown('Shift');
+await page.keydown('Control');
 
-// Move mouse to coordinates
-await page.mouse.move(300, 400);
+// Key up (release key)
+await page.keyup('Shift');
 
-// Mouse down/up actions
-await page.mouse.down(); // Left button by default
-await page.mouse.down({ button: 2 }); // Right button
-await page.mouse.up();</code></pre>
+// Target specific element (optional)
+await page.keypress('Enter', '#search-input');
 
-        <h3>Keyboard</h3>
-        <p>The keyboard object provides methods to simulate keyboard actions:</p>
-        <pre><code class="language-javascript">// Press a key (down and up)
-await page.keyboard.press("Enter");
+// With options
+await page.keypress('a', '#input', { 
+  ctrlKey: true,  // Ctrl+A
+  shiftKey: false 
+});</code></pre>
 
-// Key down
-await page.keyboard.down("Shift");
+        <h3>Mouse Events</h3>
+        <p>Full mouse interaction support:</p>
+        <pre><code class="language-javascript">// Click types
+await page.leftclick('#button');        // Left click
+await page.rightclick('#menu-trigger');  // Right click (context menu)
+await page.middleclick('#link');         // Middle click (new tab)
+await page.dblclick('#file');            // Double click
 
-// Key up
-await page.keyboard.up("Shift");</code></pre>
+// Mouse actions
+await page.mousedown('#draggable');      // Mouse down
+await page.mouseup('#draggable');        // Mouse up
+await page.mousemove('#target');         // Move mouse to element
+
+// With custom coordinates
+await page.leftclick('#element', { x: 10, y: 20 });
+
+// Scroll actions
+await page.scroll(null, { x: 0, y: 500 });  // Scroll window
+await page.scroll('#container', { y: -200 }); // Scroll element up</code></pre>
       </section>
 
-      <section id="select-api" class="section">
-        <h2>Select API</h2>
-        <p>pear-browser provides a specialized API for working with select elements:</p>
-        <pre><code class="language-javascript">// Get all options in a select
-const options = await page.select.getOptions("#dropdown");
-console.log("Available options:", options);
+      <section id="text-input" class="section">
+        <h2>Text Input Methods</h2>
+        <p>Two methods for text input with different behaviors:</p>
+        
+        <ul class="method-list">
+          <li>
+            <span class="method-name">.type(selector, text)</span>
+            <p>Simulates natural typing - fires keyboard events for each character. Slower but more realistic.</p>
+            <pre><code class="language-javascript">await page.type('#username', 'john_doe');
+// Triggers keydown, input, keyup events for each character</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.directType(selector, text)</span>
+            <p>Direct value assignment - faster but bypasses keyboard events. Good for large text blocks.</p>
+            <pre><code class="language-javascript">await page.directType('#message', 'This is a long message...');
+// Sets value directly, fires single input event</code></pre>
+          </li>
+        </ul>
 
-// Get selected option
-const selected = await page.select.getSelected("#dropdown");
-console.log("Selected option:", selected);
+        <div class="info-box">
+          <h4>When to use which?</h4>
+          <p><strong>type()</strong>: For forms that listen to keyboard events, character validation, or when you need realistic typing simulation.</p>
+          <p><strong>directType()</strong>: For bulk text entry, textareas, or when speed is more important than event simulation.</p>
+        </div>
+      </section>
 
-// Select by value
-await page.select.selectByValue("#dropdown", "option2");
-
-// Select by text
-await page.select.selectByText("#dropdown", "Option 3");
-
-// Select by index (0-based)
-await page.select.selectByIndex("#dropdown", 1);</code></pre>
+      <section id="element-api" class="section">
+        <h2>Element API</h2>
+        <p>Methods for interacting with page elements:</p>
+        
+        <ul class="method-list">
+          <li>
+            <span class="method-name">.getAttribute(selector, attribute)</span>
+            <p>Get an element's attribute value.</p>
+            <pre><code class="language-javascript">const href = await page.getAttribute('a#main-link', 'href');
+const className = await page.getAttribute('.item', 'class');</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.getText(selector)</span>
+            <p>Get an element's text content.</p>
+            <pre><code class="language-javascript">const buttonText = await page.getText('#submit-btn');
+const headingText = await page.getText('h1');</code></pre>
+          </li>
+        </ul>
       </section>
 
       <section id="screenshots" class="section">
         <h2>Screenshots</h2>
-        <p>Capture screenshots of the current page:</p>
-        <pre><code class="language-javascript">// Save screenshot to a file
-await page.screenshot({ path: "screenshot.png" });
+        <p>Capture page screenshots as base64 or buffer:</p>
+        <pre><code class="language-javascript">// Get screenshot as buffer
+const screenshotBuffer = await page.screenshot();
 
-// Specify format and quality
-await page.screenshot({ 
-  path: "screenshot.jpg",
-  type: "jpeg",
-  quality: 80
-});
-
-// Get screenshot as buffer (don't save to file)
-const screenshotBuffer = await page.screenshot();</code></pre>
+// Save to file
+const fs = require('fs');
+fs.writeFileSync('screenshot.png', screenshotBuffer);</code></pre>
       </section>
 
       <section id="file-upload" class="section">
         <h2>File Upload</h2>
-        <p>pear-browser supports file uploads and drag-and-drop file operations:</p>
-        <pre><code class="language-javascript">// Upload a file using a file input
-await page.uploadFile("#fileInput", "/path/to/file.jpg");
-// Multiple files
-await page.uploadFile("#fileInput", ["/path/to/file1.jpg", "/path/to/file2.jpg"]);
+        <p>Upload files to file input elements:</p>
+        <pre><code class="language-javascript">// Upload single file (URL or local path)
+await page.uploadFile('#file-input', 'https://example.com/image.jpg');
 
-// Drag and drop a file onto a target
-await page.dragAndDropFile("/path/to/file.jpg", "#dropzone");</code></pre>
+// Note: Local file paths must be accessible to the browser
+// For local files, use file:// URLs or serve them via HTTP</code></pre>
+
+        <div class="info-box">
+          <h4>File Path Requirements:</h4>
+          <p>Files must be accessible via HTTP/HTTPS URLs. Local file:// paths have browser security restrictions. Consider serving local files through a local HTTP server.</p>
+        </div>
       </section>
 
-      <section id="cookies" class="section">
-        <h2>Cookies</h2>
-        <p>Get and set browser cookies:</p>
-        <pre><code class="language-javascript">// Get cookies for a specific domain
-const cookies = await browser.getCookies("example.com");
+      <section id="wait-methods" class="section">
+        <h2>Wait Methods</h2>
+        <p>Wait for elements or conditions before proceeding:</p>
+        
+        <ul class="method-list">
+          <li>
+            <span class="method-name">.waitForSelector(selector, options)</span>
+            <p>Wait for an element to appear in the DOM.</p>
+            <pre><code class="language-javascript">// Basic usage
+await page.waitForSelector('.loading-complete');
 
-// Get all cookies
-const allCookies = await browser.getAllCookies();
+// With timeout and check interval
+await page.waitForSelector('#dynamic-content', {
+  timeout: 10000,      // Wait max 10 seconds
+  checkInterval: 200   // Check every 200ms
+});
 
-// Set cookies
-await browser.setCookies([
-  {
-    name: "sessionId",
-    value: "abc123",
-    domain: "example.com",
-    path: "/",
-    secure: true,
-    httpOnly: false,
-    expirationDate: (Date.now() / 1000) + 3600
-  }
-]);</code></pre>
+// Disable timeout (wait indefinitely)
+await page.waitForSelector('.element', { timeout: 0 });</code></pre>
+          </li>
+        </ul>
       </section>
 
       <section id="examples" class="section">
-        <h2>Examples</h2>
+        <h2>Complete Examples</h2>
         
-        <h3>Basic Navigation</h3>
-        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+        <h3>Google Search Automation</h3>
+        <pre><code class="language-javascript">const Pear = require("pear3");
 
-async function main() {
-  const browser = await pearBrowser({ useChromium: true });
-  const page = await browser.newPage("https://example.com");
+async function googleSearch() {
+  const browser = await Pear({
+    viewport: { width: 1280, height: 800 }
+  });
+
+  const page = await browser.newPage();
+  await page.goto("https://google.com");
   
-  // Wait for a specific element
-  await page.waitForSelector("h1");
+  // Wait for search box and type query
+  await page.waitForSelector('textarea[name="q"]');
+  await page.type('textarea[name="q"]', 'pear browser automation');
+  await page.keypress('Enter');
   
-  // Get page title using evaluate
-  const title = await page.evaluate(() => document.title);
-  console.log("Page title:", title);
+  // Wait for results and take screenshot
+  await page.waitForSelector('#search');
+  const screenshot = await page.screenshot();
+  
+  require('fs').writeFileSync('search-results.png', screenshot);
+  console.log('Search completed and screenshot saved!');
   
   await browser.close();
 }
 
-main().catch(console.error);</code></pre>
+googleSearch().catch(console.error);</code></pre>
 
-        <h3>Form Submission</h3>
-        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+        <h3>Form Automation</h3>
+        <pre><code class="language-javascript">const Pear = require("pear3");
 
-async function main() {
-  const browser = await pearBrowser({ useChromium: true });
-  const page = await browser.newPage("https://example.com/login");
+async function fillForm() {
+  const browser = await Pear();
+  const page = await browser.newPage();
   
-  // Fill out form
-  await page.type("input[name='username']", "user123");
-  await page.type("input[name='password']", "password123");
-  await page.click("#login-button");
+  await page.goto("https://example.com/contact-form");
   
-  // Wait for navigation to complete
-  await page.waitForSelector(".dashboard");
-  console.log("Login successful!");
+  // Fill form fields
+  await page.type('#name', 'John Doe');
+  await page.type('#email', 'john@example.com');
+  await page.directType('#message', `
+    This is a longer message that I'm typing
+    into the contact form using directType
+    for better performance.
+  `);
+  
+  // Select dropdown option
+  await page.leftclick('#country');
+  await page.waitForSelector('#country option[value="US"]');
+  await page.leftclick('#country option[value="US"]');
+  
+  // Upload file
+  await page.uploadFile('#attachment', 'https://example.com/document.pdf');
+  
+  // Submit form
+  await page.leftclick('#submit-button');
+  
+  // Wait for confirmation
+  await page.waitForSelector('.success-message');
+  console.log('Form submitted successfully!');
   
   await browser.close();
 }
 
-main().catch(console.error);</code></pre>
+fillForm().catch(console.error);</code></pre>
 
-        <h3>Web Scraping</h3>
-        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
-const fs = require("fs");
+        <h3>Web Scraping with Mouse Interactions</h3>
+        <pre><code class="language-javascript">const Pear = require("pear3");
 
-async function main() {
-  const browser = await pearBrowser({ useChromium: true });
-  const page = await browser.newPage("https://news-site.com");
+async function scrapeWithInteraction() {
+  const browser = await Pear({ headless: false });
+  const page = await browser.newPage();
   
-  // Extract article data
-  const articles = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll(".article")).map(article => ({
-      title: article.querySelector(".title").innerText,
-      summary: article.querySelector(".summary").innerText,
-      url: article.querySelector("a").href
-    }));
-  });
+  await page.goto("https://example-spa.com");
   
-  // Save results to file
-  fs.writeFileSync("articles.json", JSON.stringify(articles, null, 2));
-  console.log(`Scraped ${articles.length} articles`);
+  // Wait for page to load
+  await page.waitForSelector('.content-loaded');
+  
+  // Hover to reveal dropdown menu
+  await page.mousemove('.menu-trigger');
+  await page.waitForSelector('.dropdown-menu');
+  
+  // Right-click to open context menu
+  await page.rightclick('.data-item');
+  await page.leftclick('.context-export');
+  
+  // Scroll to load more content
+  for (let i = 0; i < 5; i++) {
+    await page.scroll(null, { y: 500 });
+    await page.waitForSelector(`.item-${i + 6}`, { timeout: 2000 });
+  }
+  
+  // Extract all data
+  const content = await page.content();
+  // Process content...
   
   await browser.close();
 }
 
-main().catch(console.error);</code></pre>
+scrapeWithInteraction().catch(console.error);</code></pre>
 
-        <h3>With Express Server Integration</h3>
-        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
-const express = require("express");
-const http = require("http");
+        <h3>Multi-tab Management</h3>
+        <pre><code class="language-javascript">const Pear = require("pear3");
 
-async function main() {
-  const app = express();
-  const server = http.createServer(app);
+async function multiTabExample() {
+  const browser = await Pear();
   
-  app.get('/', (req, res) => {
-    res.send('pear-browser Browser API Server');
+  // Open multiple tabs
+  const page1 = await browser.newPage();
+  const page2 = await browser.newPage();
+  const page3 = await browser.newPage();
+  
+  // Work with different tabs simultaneously
+  await Promise.all([
+    page1.goto("https://site1.com"),
+    page2.goto("https://site2.com"),
+    page3.goto("https://site3.com")
+  ]);
+  
+  // Take screenshots of all tabs
+  const screenshots = await Promise.all([
+    page1.screenshot(),
+    page2.screenshot(),
+    page3.screenshot()
+  ]);
+  
+  // Save screenshots
+  const fs = require('fs');
+  screenshots.forEach((screenshot, index) => {
+    fs.writeFileSync(`tab-${index + 1}.png`, screenshot);
   });
   
-  server.listen(3000, () => {
-    console.log(`Server running on port 3000`);
-  });
+  // Close specific tabs
+  await page2.close();
+  await page3.close();
   
-  const browser = await pearBrowser({
-    server: server,
-    port: 3000,
-    debug: true
-  });
+  // Continue working with page1
+  await page1.type('#search', 'final search');
   
-  // Now browser is integrated with your Express server
-  const page = await browser.newPage("https://example.com");
-  // ...
+  await browser.close();
 }
 
-main().catch(console.error);</code></pre>
+multiTabExample().catch(console.error);</code></pre>
       </section>
     </main>
   </div>
@@ -700,44 +738,26 @@ main().catch(console.error);</code></pre>
   // Smooth scrolling for navigation links
   navLinks.forEach(link => {
     link.addEventListener('click', function(e) {
-      // Set as active immediately for better UX
       navLinks.forEach(l => l.classList.remove('active'));
       this.classList.add('active');
     });
   });
   
-  // Mobile menu toggle (if needed in the future)
+  // Mobile menu setup
   function setupMobileMenu() {
-    const sidebar = document.querySelector('.sidebar');
-    
-    // Add collapse/expand capability if window is small
     if (window.innerWidth <= 768) {
       const navLinks = document.querySelectorAll('.nav-link');
       navLinks.forEach(link => {
         link.addEventListener('click', () => {
-          if (window.innerWidth <= 768) {
-            // Additional mobile-specific behavior could be added here
-          }
+          // Mobile-specific behavior can be added here
         });
       });
     }
   }
   
-  // Call once on load
   setupMobileMenu();
-  
-  // Monitor for window resizing
-  window.addEventListener('resize', () => {
-    setupMobileMenu();
-  });
-  
-  // Handle copy code functionality (to be implemented if needed)
-  function addCopyCodeButtons() {
-    // Future enhancement: Add copy buttons to code blocks
-  }
+  window.addEventListener('resize', setupMobileMenu);
 });
-
   </script>
- 
 </body>
 </html>

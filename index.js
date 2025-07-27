@@ -7,14 +7,12 @@ async function main() {
     });
 
     const page = await browser.newPage();
-    console.log('🍐 Browser started');
 
     await page.goto("https://google.com");
-    console.log('🍐 Navigated to Google');
-    await page.directType('textarea', 'New events work!');
+    await page.directType('textarea', 'Hello Pear!');
     await page.keypress('Enter');
 
-    await new Promise(r => setTimeout(r, 2000));
+
 
 }
 
