@@ -28,12 +28,35 @@ function sendMessage(session, data) {
 
 // Helper function for keyboard events
 function createKeyboardEvent(type, key, options = {}) {
+    let keyCode = 0;
+    if (typeof key === 'string') {
+        if (key.length === 1) {
+            keyCode = key.charCodeAt(0);
+        } else {
+            const keyMap = {
+                Enter: 13,
+                Tab: 9,
+                Backspace: 8,
+                Shift: 16,
+                Control: 17,
+                Alt: 18,
+                Escape: 27,
+                ArrowLeft: 37,
+                ArrowUp: 38,
+                ArrowRight: 39,
+                ArrowDown: 40,
+                Delete: 46,
+                Space: 32
+            };
+            keyCode = keyMap[key] || 0;
+        }
+    }
     return new KeyboardEvent(type, {
         key: key,
         code: options.code || key,
-        charCode: key.charCodeAt ? key.charCodeAt(0) : 0,
-        keyCode: key.charCodeAt ? key.charCodeAt(0) : 0,
-        which: key.charCodeAt ? key.charCodeAt(0) : 0,
+        charCode: keyCode,
+        keyCode: keyCode,
+        which: keyCode,
         bubbles: true,
         cancelable: true,
         ...options
@@ -71,6 +94,7 @@ function onMsg(event) {
     
     // Keyboard events
     else if (data.type === 'keypress' || data.type === 'keydown' || data.type === 'keyup') {
+        if (data.type === 'keypress') data.type = 'keydown'; // Normalize to keydown for consistency
         const key = data.key;
         const options = data.options || {};
         const event = createKeyboardEvent(data.type, key, options);
@@ -131,29 +155,11 @@ function onMsg(event) {
         }
     }
     
-    // Legacy keypress handler
-    else if (data.action === 'keypress') {
-        const key = data.key;
-        const event = createKeyboardEvent('keydown', key);
-        document.dispatchEvent(event);
-    }
-    
     // Navigation
     else if (data.type === 'goto') {
         window.location.href = data.url;
     } else if (data.type === 'reload') {
         window.location.reload();
-    }
-    
-    // Click (legacy)
-    else if (data.type === 'click') {
-        try {
-            const element = document.querySelector(data[0]);
-            element.click();
-            sendMessage(data, { action: 'click', success: true });
-        } catch {
-            sendMessage(data, { action: 'click', success: false });
-        }
     }
     
     // URL and content
