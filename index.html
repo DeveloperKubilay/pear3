@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>pear-browser Browser Automation - Documentation</title>
+  <title>pear3 Browser Automation - Documentation</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -295,8 +295,8 @@ p code, li code {
       </div>
 
       <section id="introduction" class="section">
-        <h2>Introduction to pear-browser</h2>
-        <p>pear-browser is a powerful browser automation library for Node.js that provides direct control over Chrome/Chromium through WebSocket communication. Unlike traditional automation tools, pear-browser operates as a Chrome extension, making it:</p>
+        <h2>Introduction to pear3</h2>
+        <p>pear3 is a powerful browser automation library for Node.js that provides direct control over Chrome/Chromium through WebSocket communication. Unlike traditional automation tools, pear3 operates as a Chrome extension, making it:</p>
         <ul>
           <li><strong>Stealthy</strong> - Hard to detect by anti-bot systems</li>
           <li><strong>Fast</strong> - Direct communication without protocol overhead</li>
@@ -308,12 +308,12 @@ p code, li code {
 
       <section id="installation" class="section">
         <h2>Installation</h2>
-        <p>Install pear-browser using npm:</p>
-        <pre><code class="language-bash">npm install pear-browser</code></pre>
+        <p>Install pear3 using npm:</p>
+        <pre><code class="language-bash">npm install pear3</code></pre>
         
         <div class="info-box">
           <h4>Requirements:</h4>
-          <p>pear-browser requires Chrome or Chromium. It can automatically download Chromium or use your system's Chrome installation.</p>
+          <p>pear3 requires Chrome or Chromium. It can automatically download Chromium or use your system's Chrome installation.</p>
         </div>
       </section>
 
@@ -347,7 +347,7 @@ main().catch(console.error);</code></pre>
       <section id="browser-api" class="section">
         <h2>Browser API</h2>
         <h3>Initialization Options</h3>
-        <p>Configure pear-browser with these options:</p>
+        <p>Configure pear3 with these options:</p>
         <pre><code class="language-javascript">const browser = await Pear({
   browserPath: "/path/to/chrome",       // Custom Chrome executable path
   profileDir: "./chrome-profile",      // Chrome user data directory

@@ -25,5 +25,10 @@
   "author": "DeveloperKubilay",
   "license": "MIT",
   "type": "commonjs",
-  "description": "Node.js based web automation framework. Its own Chromium, extension, API—total boss! 😎💻"
+  "description": "Undetectable Chrome automation with a fully automated Chromium using extension APIs. 😎",
+  "homepage": "https://example.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DeveloperKubilay/pear3"
+  }
 }
