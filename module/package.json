@@ -1,0 +1,29 @@
+{
+  "name": "pear3",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "automation",
+    "chromium",
+    "websocket",
+    "browser",
+    "nodejs",
+    "pear",
+    "extension",
+    "web automation",
+    "puppeteer",
+    "playwright",
+    "selenium",
+    "web",
+    "screenshot",
+    "keyboard",
+    "mouse"
+  ],
+  "author": "DeveloperKubilay",
+  "license": "MIT",
+  "type": "commonjs",
+  "description": "Node.js based web automation framework. Its own Chromium, extension, API—total boss! 😎💻"
+}

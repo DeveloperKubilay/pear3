@@ -19,6 +19,11 @@ jobs:
               with:
                   node-version: 20
                   registry-url: https://registry.npmjs.org
+                  
+            - name: 📦 Package setup
+              run: cp LICENSE module/LICENSE
+              working-directory: .
+
             - name: 🚀 publish
               run: cd module && npm publish --access public
               working-directory: .

@@ -17,17 +17,22 @@ npm install
 
 ## ⚡️ Usage
 ```js
-const Pear = require('./module/index.js');
+const Pear = require("pear3")
 
-(async () => {
-    const browser = await Pear({ headless: false });
+async function main() {
+    const browser = await Pear({
+        viewport: { width: 1280, height: 800 },
+        headless: false
+    });
+
     const page = await browser.newPage();
-    await page.goto('http://localhost/test.html');
-    await page.click('#inputField');
-    await page.type('#inputField', 'Hello Pear!');
-    await page.screenshot();
-    browser.close();
-})();
+
+    await page.goto("https://google.com");
+    await page.directType('textarea', 'Hello Pear!');
+    await page.keypress('Enter');
+}
+
+main()
 ```
 
 ## 🧩 API
