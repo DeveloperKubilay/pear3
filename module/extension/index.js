@@ -26,41 +26,145 @@ function sendMessage(session, data) {
     }
 }
 
+// Helper function for keyboard events
+function createKeyboardEvent(type, key, options = {}) {
+    return new KeyboardEvent(type, {
+        key: key,
+        code: options.code || key,
+        charCode: key.charCodeAt ? key.charCodeAt(0) : 0,
+        keyCode: key.charCodeAt ? key.charCodeAt(0) : 0,
+        which: key.charCodeAt ? key.charCodeAt(0) : 0,
+        bubbles: true,
+        cancelable: true,
+        ...options
+    });
+}
+
+// Helper function for mouse events
+function createMouseEvent(type, element, options = {}) {
+    const rect = element.getBoundingClientRect();
+    const x = options.x !== undefined ? options.x : rect.left + rect.width / 2;
+    const y = options.y !== undefined ? options.y : rect.top + rect.height / 2;
+    
+    return new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: x,
+        clientY: y,
+        screenX: x + window.screenX,
+        screenY: y + window.screenY,
+        button: options.button || 0, // 0: left, 1: middle, 2: right
+        buttons: options.buttons || 1,
+        ...options
+    });
+}
+
 function onMsg(event) {
     const data = JSON.parse(event.data);
     console.log('Received message:', data);
+    
     if (data.action === 'newTab') {
         window.open("#id=" + data.id, '_blank');
         return sendMessage(data, { action: false })
-    } else if (data.action === 'keypress') {
+    } 
+    
+    // Keyboard events
+    else if (data.type === 'keypress' || data.type === 'keydown' || data.type === 'keyup') {
         const key = data.key;
-        const event = new KeyboardEvent('keydown', {
-            key: key,
-            code: key,
-            charCode: key.charCodeAt(0),
-            keyCode: key.charCodeAt(0),
-            which: key.charCodeAt(0),
-            bubbles: true
-        });
+        const options = data.options || {};
+        const event = createKeyboardEvent(data.type, key, options);
+        const target = data.selector ? document.querySelector(data.selector) : document;
+        target.dispatchEvent(event);
+        sendMessage(data, { action: data.type, success: true });
+    }
+    
+    // Mouse events
+    else if (['rightclick', 'middleclick', 'leftclick', 'dblclick', 'mousedown', 'mouseup', 'mousemove'].includes(data.type)) {
+        try {
+            const element = document.querySelector(data.selector);
+            if (!element) {
+                sendMessage(data, { action: data.type, success: false, error: 'Element not found' });
+                return;
+            }
+            
+            const options = data.options || {};
+            let eventType = data.type;
+            
+            if (data.type === 'rightclick') {
+                options.button = 2;
+                options.buttons = 2;
+                eventType = 'click';
+            } else if (data.type === 'middleclick') {
+                options.button = 1;
+                options.buttons = 4;
+                eventType = 'click';
+            } else if (data.type === 'leftclick') {
+                options.button = 0;
+                options.buttons = 1;
+                eventType = 'click';
+            }
+            
+            const event = createMouseEvent(eventType, element, options);
+            element.dispatchEvent(event);
+            sendMessage(data, { action: data.type, success: true });
+        } catch (error) {
+            sendMessage(data, { action: data.type, success: false, error: error.message });
+        }
+    }
+    
+    // Scroll event
+    else if (data.type === 'scroll') {
+        try {
+            const element = data.selector ? document.querySelector(data.selector) : window;
+            const options = data.options || {};
+            
+            if (element === window) {
+                window.scrollBy(options.x || 0, options.y || 0);
+            } else {
+                element.scrollBy(options.x || 0, options.y || 0);
+            }
+            
+            sendMessage(data, { action: 'scroll', success: true });
+        } catch (error) {
+            sendMessage(data, { action: 'scroll', success: false, error: error.message });
+        }
+    }
+    
+    // Legacy keypress handler
+    else if (data.action === 'keypress') {
+        const key = data.key;
+        const event = createKeyboardEvent('keydown', key);
         document.dispatchEvent(event);
-    } else if (data.type === 'goto') {
-        const url = data.url;
-        window.location.href = url;
+    }
+    
+    // Navigation
+    else if (data.type === 'goto') {
+        window.location.href = data.url;
     } else if (data.type === 'reload') {
         window.location.reload();
-    } else if (data.type === 'click') {
+    }
+    
+    // Click (legacy)
+    else if (data.type === 'click') {
         try {
             const element = document.querySelector(data[0]);
             element.click();
             sendMessage(data, { action: 'click', success: true });
         } catch {
-            sendMessage(data, { action: 'click', success: false  });
+            sendMessage(data, { action: 'click', success: false });
         }
-    }else if(data.type === "url"){
+    }
+    
+    // URL and content
+    else if (data.type === "url") {
         sendMessage(data, { action: 'url', url: window.location.href });
-    } else if(data.type === "content"){
+    } else if (data.type === "content") {
         sendMessage(data, { action: 'content', content: document.documentElement.outerHTML });
-    } else if(data.type === "screenshot"){
+    }
+    
+    // Screenshot
+    else if (data.type === "screenshot") {
         html2canvas(document.body).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
             sendMessage(data, { action: 'screenshot', screenshot: imgData });
@@ -68,100 +172,74 @@ function onMsg(event) {
             console.error('Screenshot error:', err);
             sendMessage(data, { action: 'screenshot', error: err.message });
         });
-    } else if (data.type === 'close') {
+    }
+    
+    // Window management
+    else if (data.type === 'close') {
         window.close();
-    } else if (data.type === "reload") {
-        window.location.reload();
-    } else if (data.type === "type") {
+    }
+    
+    // Text input
+    else if (data.type === "type" || data.type === "directType") {
         const selector = data.selector;
         const text = data.text || '';
         
         let el;
         if (selector) {
-            // Seçici kullanılarak element bul
             try {
                 el = document.querySelector(selector);
                 if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-                    el.focus(); // Elemente focus ver
+                    el.focus();
                 } else {
-                    sendMessage(data, { action: 'type', success: false, error: `Element not found or not typeable: ${selector}` });
+                    sendMessage(data, { action: data.type, success: false, error: `Element not found or not typeable: ${selector}` });
                     return;
                 }
             } catch (error) {
-                sendMessage(data, { action: 'type', success: false, error: `Invalid selector: ${selector}` });
+                sendMessage(data, { action: data.type, success: false, error: `Invalid selector: ${selector}` });
                 return;
             }
         } else {
-            // Aktif elementi kullan
             el = document.activeElement;
             if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-                sendMessage(data, { action: 'type', success: false, error: 'No valid input element' });
+                sendMessage(data, { action: data.type, success: false, error: 'No valid input element' });
                 return;
             }
         }
         
-        // Yazı yazma işlemi
-        [...text].forEach(char => {
-            el.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));
+        if (data.type === "type") {
+            [...text].forEach(char => {
+                el.dispatchEvent(createKeyboardEvent('keydown', char));
+                if (el.isContentEditable) {
+                    el.innerText += char;
+                } else {
+                    el.value += char;
+                }
+                el.dispatchEvent(createKeyboardEvent('keyup', char));
+                el.dispatchEvent(new InputEvent('input', { data: char, bubbles: true }));
+            });
+        } else {
             if (el.isContentEditable) {
-                el.innerText += char;
+                el.innerText = text;
             } else {
-                el.value += char;
+                el.value = text;
             }
-            el.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true }));
-            el.dispatchEvent(new InputEvent('input', { data: char, bubbles: true }));
-        });
-        sendMessage(data, { action: 'type', success: true });
-        
-    } else if (data.type === "directType") {
-        const selector = data.selector;
-        const text = data.text || '';
-        
-        let el;
-        if (selector) {
-            // Seçici kullanılarak element bul
-            try {
-                el = document.querySelector(selector);
-                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-                    el.focus(); // Elemente focus ver
-                } else {
-                    sendMessage(data, { action: 'directType', success: false, error: `Element not found or not typeable: ${selector}` });
-                    return;
-                }
-            } catch (error) {
-                sendMessage(data, { action: 'directType', success: false, error: `Invalid selector: ${selector}` });
-                return;
-            }
-        } else {
-            // Aktif elementi kullan
-            el = document.activeElement;
-            if (!el || !(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-                sendMessage(data, { action: 'directType', success: false, error: 'No valid input element' });
-                return;
-            }
+            el.dispatchEvent(new InputEvent('input', { data: text, bubbles: true }));
         }
         
-        // Direkt yazma işlemi
-        if (el.isContentEditable) {
-            el.innerText = text;
-        } else {
-            el.value = text;
-        }
-        el.dispatchEvent(new InputEvent('input', { data: text, bubbles: true }));
-        sendMessage(data, { action: 'directType', success: true });
-        
-    } else if (data.type === "waitForSelector") {
+        sendMessage(data, { action: data.type, success: true });
+    }
+    
+    // Wait for selector
+    else if (data.type === "waitForSelector") {
         const selector = data.selector;
-        const timeout = data.timeout || 30000; // Default 30 saniye
-        const checkInterval = data.checkInterval || 100; // Default 100ms
-        
+        const timeout = data.timeout || 30000;
+        const checkInterval = data.checkInterval || 100;
         const startTime = Date.now();
         
         const checkElement = () => {
             try {
                 const element = document.querySelector(selector);
                 if (element) {
-                    // Element bulundu
                     sendMessage(data, { 
                         action: 'waitForSelector', 
                         success: true, 
@@ -170,13 +248,12 @@ function onMsg(event) {
                             tagName: element.tagName,
                             id: element.id,
                             className: element.className,
-                            textContent: element.textContent?.substring(0, 100) // İlk 100 karakter
+                            textContent: element.textContent?.substring(0, 100)
                         }
                     });
                     return;
                 }
                 
-                // Timeout kontrolü
                 if (timeout > 0 && Date.now() - startTime > timeout) {
                     sendMessage(data, { 
                         action: 'waitForSelector', 
@@ -188,9 +265,7 @@ function onMsg(event) {
                     return;
                 }
                 
-                // Tekrar kontrol et
                 setTimeout(checkElement, checkInterval);
-                
             } catch (error) {
                 sendMessage(data, { 
                     action: 'waitForSelector', 
@@ -202,10 +277,11 @@ function onMsg(event) {
             }
         };
         
-        // İlk kontrolü başlat
         checkElement();
-        
-    } else if (data.type === "uploadFile") {
+    }
+    
+    // File upload
+    else if (data.type === "uploadFile") {
         const selector = data.selector;
         const filePath = data.filePath;
         
@@ -221,7 +297,6 @@ function onMsg(event) {
                 return;
             }
             
-            // Dosya yolu ile DataTransfer oluştur
             fetch(filePath)
                 .then(response => response.blob())
                 .then(blob => {
@@ -232,8 +307,6 @@ function onMsg(event) {
                     dataTransfer.items.add(file);
                     
                     fileInput.files = dataTransfer.files;
-                    
-                    // Change event'ini tetikle
                     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                     
                     sendMessage(data, { 
@@ -244,9 +317,7 @@ function onMsg(event) {
                     });
                 })
                 .catch(error => {
-                    // Yerel dosya yolu ise farklı yaklaşım
                     if (filePath.startsWith('file://') || !filePath.startsWith('http')) {
-                        // Tarayıcı güvenlik kısıtlamaları nedeniyle yerel dosya erişimi sınırlı
                         sendMessage(data, { 
                             action: 'uploadFile', 
                             success: false, 
@@ -260,7 +331,6 @@ function onMsg(event) {
                         });
                     }
                 });
-                
         } catch (error) {
             sendMessage(data, { 
                 action: 'uploadFile', 
@@ -268,8 +338,10 @@ function onMsg(event) {
                 error: `Upload error: ${error.message}` 
             });
         }
-        
-    } else if (data.type === "getAttribute") {
+    }
+    
+    // Get attribute
+    else if (data.type === "getAttribute") {
         const selector = data.selector;
         const attribute = data.attribute;
         
@@ -294,7 +366,6 @@ function onMsg(event) {
                 selector: selector,
                 attribute: attribute
             });
-            
         } catch (error) {
             sendMessage(data, { 
                 action: 'getAttribute', 
@@ -302,8 +373,10 @@ function onMsg(event) {
                 error: `Error getting attribute: ${error.message}` 
             });
         }
-        
-    } else if (data.type === "getText") {
+    }
+    
+    // Get text
+    else if (data.type === "getText") {
         const selector = data.selector;
         
         try {
@@ -326,7 +399,6 @@ function onMsg(event) {
                 text: text.trim(),
                 selector: selector
             });
-            
         } catch (error) {
             sendMessage(data, { 
                 action: 'getText', 
@@ -334,9 +406,10 @@ function onMsg(event) {
                 error: `Error getting text: ${error.message}` 
             });
         }
-        
-    } else {
-        console.warn('Unknown action:', data.action);
+    }
+    
+    else {
+        console.warn('Unknown action:', data.action || data.type);
     }
 }
 
