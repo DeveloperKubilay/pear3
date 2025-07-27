@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pear-browser Browser Automation - Documentation</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <style>
+    /* Base styles and reset */
+:root {
+  --color-primary: #4caf50;
+  --color-primary-dark: #2e7d32;
+  --color-secondary: #ff9800;
+  --color-text: #333;
+  --color-text-light: #666;
+  --color-bg: #fff;
+  --color-bg-dark: #f5f5f5;
+  --color-sidebar-bg: #f8f9fa;
+  --color-code-bg: #282c34;
+  --color-info: #e3f2fd;
+  --color-info-border: #90caf9;
+  --sidebar-width: 280px;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --border-radius: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 40px;
+}
+
+body {
+  font-family: var(--font-family);
+  line-height: 1.6;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+/* Layout */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: var(--color-sidebar-bg);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.logo {
+  margin-bottom: 2rem;
+  padding-left: 1rem;
+}
+
+.logo h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.logo .tagline {
+  color: var(--color-text-light);
+  font-size: 1rem;
+}
+
+.nav-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link {
+  display: block;
+  padding: 0.6rem 1rem;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: var(--color-primary);
+}
+
+.nav-link.active {
+  background-color: var(--color-primary);
+  color: white;
+  font-weight: 500;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  padding: 1rem;
+}
+
+/* Main content */
+.content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: 2rem;
+  max-width: 900px;
+}
+
+/* Sections */
+.section {
+  margin-bottom: 4rem;
+  scroll-margin-top: 2rem;
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-primary-dark);
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-primary);
+}
+
+h3 {
+  font-size: 1.5rem;
+  margin: 2rem 0 1rem;
+  color: var(--color-text);
+}
+
+h4 {
+  font-size: 1.2rem;
+  margin: 1.5rem 0 0.75rem;
+  color: var(--color-text);
+}
+
+p, ul, ol {
+  margin-bottom: 1.2rem;
+}
+
+ul, ol {
+  padding-left: 1.5rem;
+}
+
+/* Code blocks */
+pre {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  background-color: var(--color-code-bg);
+  overflow-x: auto;
+}
+
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.9em;
+}
+
+p code, li code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  color: var(--color-primary-dark);
+}
+
+/* Info box */
+.info-box {
+  background-color: var(--color-info);
+  border-left: 4px solid var(--color-info-border);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.info-box h4 {
+  margin-top: 0;
+  color: #1976d2;
+}
+
+/* Method list */
+.method-list {
+  list-style: none;
+  padding: 0;
+}
+
+.method-list li {
+  margin-bottom: 2rem;
+}
+
+.method-name {
+  display: inline-block;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  background-color: rgba(76, 175, 80, 0.1);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+  .content {
+    margin-left: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+  }
+  .content {
+    margin-left: 0;
+    padding: 1.5rem;
+  }
+  .logo {
+    margin-bottom: 1rem;
+    text-align: center;
+    padding-left: 0;
+  }
+  .nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .nav-link {
+    margin-bottom: 0;
+  }
+}
+
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="logo">
+        <h1>🍐 Pear</h1>
+        <p class="tagline">Browser Automation</p>
+      </div>
+      <ul class="nav-links">
+        <li><a href="#introduction" class="nav-link active">Introduction</a></li>
+        <li><a href="#installation" class="nav-link">Installation</a></li>
+        <li><a href="#getting-started" class="nav-link">Getting Started</a></li>
+        <li><a href="#browser-api" class="nav-link">Browser API</a></li>
+        <li><a href="#page-api" class="nav-link">Page API</a></li>
+        <li><a href="#mouse-keyboard" class="nav-link">Mouse & Keyboard</a></li>
+        <li><a href="#select-api" class="nav-link">Select API</a></li>
+        <li><a href="#screenshots" class="nav-link">Screenshots</a></li>
+        <li><a href="#file-upload" class="nav-link">File Upload</a></li>
+        <li><a href="#cookies" class="nav-link">Cookies</a></li>
+        <li><a href="#examples" class="nav-link">Examples</a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <p>Made with ❤️ by <a href="https://github.com/developerkubilay">DeveloperKubilay</a></p>
+        <p>v1.0.0</p>
+      </div>
+    </nav>
+
+    <main class="content">
+      <div class="section" style="margin-bottom: 2rem; padding: 1rem; background-color: #FFF3CD; border-left: 5px solid #ffc107; border-radius: var(--border-radius);">
+        <h1 style="color: #D70000; font-size: 1.5rem; margin-bottom: 0.5rem;">🚨 Warning</h1>
+        <h3 style="margin-top: 0;">This is <strong>not</strong> (Puppeteer or Selenium). It <strong>doesn't use the same API</strong>!</h3>
+        <h3>This module runs as a real Chrome extension, making it stealthy and hard to detect.</h3>
+        <h3>It uses a completely separate API to interact with the browser.</h3>
+      </div>
+
+      <section id="introduction" class="section">
+        <h2>Introduction to pear-browser</h2>
+        <p>pear-browser is a powerful browser automation library for Node.js, similar to Puppeteer but with more direct control over Chrome/Chromium. pear-browser allows you to control the browser programmatically, making it perfect for:</p>
+        <ul>
+          <li>Web scraping and data extraction</li>
+          <li>Automated testing of web applications</li>
+          <li>Capturing screenshots</li>
+          <li>Automating form submission</li>
+          <li>Browser behavior testing</li>
+        </ul>
+        <p>pear-browser works by launching a Chrome instance and communicating with it via WebSocket, allowing fine-grained control over browser actions and page interactions.</p>
+      </section>
+
+      <section id="installation" class="section">
+        <h2>Installation</h2>
+        <p>Install pear-browser using npm:</p>
+        <pre><code class="language-bash">npm install pear-browser</code></pre>
+        
+        <div class="info-box">
+          <h4>Note:</h4>
+          <p>pear-browser requires a Chrome or Chromium installation. You can use your system's Chrome installation or let pear-browser download and use a bundled Chromium version.</p>
+        </div>
+      </section>
+
+      <section id="getting-started" class="section">
+        <h2>Getting Started</h2>
+        <p>Here's a simple example to get started with pear-browser:</p>
+        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+
+async function main() {
+  const browser = await pearBrowser({
+    useChromium: true
+  });
+
+  const page = await browser.newPage("https://www.google.com");
+
+  await page.screenshot({ path: "search-results.png" });
+  
+  await browser.close();
+}
+
+main().catch(console.error);</code></pre>
+      </section>
+
+      <section id="browser-api" class="section">
+        <h2>Browser API</h2>
+        <h3>Initialization Options</h3>
+        <p>When initializing pear-browser, you can provide the following options:</p>
+        <pre><code class="language-javascript">const browser = await pear-browser({
+  browserPath: "path/to/chrome",  // Custom Chrome path
+  profileDir: "./profile",        // Chrome profile directory
+  args: ["--disable-gpu"],        // Additional Chrome arguments
+  debug: false,                   // Enable debug logging
+  useragent: "Custom User Agent", // Set a custom user agent
+  viewport: { width: 1280, height: 720 }, // Default viewport
+  port: 9876,                     // WebSocket port
+  incognito: false,               // Use incognito mode
+  autoclose: false,               // Close when WebSocket disconnects
+  server: httpServer,             // Custom HTTP server
+  proxy: "http://proxy:8080",     // Use proxy
+  nosandbox: false,               // Disable sandbox
+  muteaudio: false,               // Mute audio
+  useChromium: false,             // Use bundled Chromium
+});</code></pre>
+
+        <h3>Browser Methods</h3>
+        <ul class="method-list">
+          <li>
+            <span class="method-name">.newPage(url, options)</span>
+            <p>Opens a new tab with the specified URL. Returns a Page object.</p>
+            <p>Options:</p>
+            <ul>
+              <li><code>dontwaitLoad</code>: Don't wait for page to load</li>
+            </ul>
+          </li>
+          <li>
+            <span class="method-name">.close()</span>
+            <p>Closes the browser instance and all open tabs.</p>
+          </li>
+          <li>
+            <span class="method-name">.setUserAgent(userAgent)</span>
+            <p>Sets the user agent for all pages.</p>
+          </li>
+          <li>
+            <span class="method-name">.getCookies(domain)</span>
+            <p>Gets cookies for the specified domain.</p>
+          </li>
+          <li>
+            <span class="method-name">.getAllCookies()</span>
+            <p>Gets all browser cookies.</p>
+          </li>
+          <li>
+            <span class="method-name">.setCookies(cookies)</span>
+            <p>Sets browser cookies.</p>
+          </li>
+        </ul>
+
+        <h3>Browser Events</h3>
+        <p>pear-browser emits events you can listen to:</p>
+        <pre><code class="language-javascript">browser.on("tabcreated", (tab) => {
+  console.log("New tab created:", tab);
+});</code></pre>
+      </section>
+
+      <section id="page-api" class="section">
+        <h2>Page API</h2>
+        <p>The Page API provides methods to interact with web pages.</p>
+        
+        <ul class="method-list">
+          <li>
+            <span class="method-name">.evaluate(fn, ...args)</span>
+            <p>Evaluates a function in the browser context and returns the result.</p>
+            <pre><code class="language-javascript">const result = await page.evaluate((a, b) => {
+  return a + b;
+}, 5, 10); // Returns 15</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.click(selector, options)</span>
+            <p>Clicks on an element matching the selector.</p>
+            <pre><code class="language-javascript">await page.click("#submit-button");</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.focus(selector)</span>
+            <p>Focuses on an element matching the selector.</p>
+            <pre><code class="language-javascript">await page.focus("input[name='username']");</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.type(text) or .type(selector, text)</span>
+            <p>Types text into the focused element or into an element matching the selector.</p>
+            <pre><code class="language-javascript">await page.focus("input[name='username']");
+await page.type("johndoe");
+// Or
+await page.type("input[name='username']", "johndoe");</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.waitForSelector(selector, options)</span>
+            <p>Waits for an element matching the selector to appear in the page.</p>
+            <pre><code class="language-javascript">await page.waitForSelector(".results", { timeout: 5000 });</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.waitForNavigation(options)</span>
+            <p>Waits for navigation to complete after actions like form submission or link clicks.</p>
+            <pre><code class="language-javascript">await page.click("#submit-button");
+await page.waitForNavigation({ timeout: 5000 });</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.waitForTimeout(milliseconds)</span>
+            <p>Waits for the specified amount of time.</p>
+            <pre><code class="language-javascript">await page.waitForTimeout(1000); // Wait for 1 second</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.setViewport(dimensions)</span>
+            <p>Sets the viewport dimensions.</p>
+            <pre><code class="language-javascript">await page.setViewport({ width: 1280, height: 800 });</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.getPageSource()</span>
+            <p>Gets the HTML content of the page.</p>
+            <pre><code class="language-javascript">const html = await page.getPageSource();</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.close()</span>
+            <p>Closes the page/tab.</p>
+            <pre><code class="language-javascript">await page.close();</code></pre>
+          </li>
+        </ul>
+      </section>
+
+      <section id="mouse-keyboard" class="section">
+        <h2>Mouse & Keyboard API</h2>
+        <h3>Mouse</h3>
+        <p>The mouse object provides methods to simulate mouse actions:</p>
+        <pre><code class="language-javascript">// Wheel scroll
+await page.mouse.wheel({ deltaY: -500 }); // Scroll up
+await page.mouse.wheel({ deltaY: 500 });  // Scroll down
+
+// Click at coordinates
+await page.mouse.click(100, 200);
+
+// Move mouse to coordinates
+await page.mouse.move(300, 400);
+
+// Mouse down/up actions
+await page.mouse.down(); // Left button by default
+await page.mouse.down({ button: 2 }); // Right button
+await page.mouse.up();</code></pre>
+
+        <h3>Keyboard</h3>
+        <p>The keyboard object provides methods to simulate keyboard actions:</p>
+        <pre><code class="language-javascript">// Press a key (down and up)
+await page.keyboard.press("Enter");
+
+// Key down
+await page.keyboard.down("Shift");
+
+// Key up
+await page.keyboard.up("Shift");</code></pre>
+      </section>
+
+      <section id="select-api" class="section">
+        <h2>Select API</h2>
+        <p>pear-browser provides a specialized API for working with select elements:</p>
+        <pre><code class="language-javascript">// Get all options in a select
+const options = await page.select.getOptions("#dropdown");
+console.log("Available options:", options);
+
+// Get selected option
+const selected = await page.select.getSelected("#dropdown");
+console.log("Selected option:", selected);
+
+// Select by value
+await page.select.selectByValue("#dropdown", "option2");
+
+// Select by text
+await page.select.selectByText("#dropdown", "Option 3");
+
+// Select by index (0-based)
+await page.select.selectByIndex("#dropdown", 1);</code></pre>
+      </section>
+
+      <section id="screenshots" class="section">
+        <h2>Screenshots</h2>
+        <p>Capture screenshots of the current page:</p>
+        <pre><code class="language-javascript">// Save screenshot to a file
+await page.screenshot({ path: "screenshot.png" });
+
+// Specify format and quality
+await page.screenshot({ 
+  path: "screenshot.jpg",
+  type: "jpeg",
+  quality: 80
+});
+
+// Get screenshot as buffer (don't save to file)
+const screenshotBuffer = await page.screenshot();</code></pre>
+      </section>
+
+      <section id="file-upload" class="section">
+        <h2>File Upload</h2>
+        <p>pear-browser supports file uploads and drag-and-drop file operations:</p>
+        <pre><code class="language-javascript">// Upload a file using a file input
+await page.uploadFile("#fileInput", "/path/to/file.jpg");
+// Multiple files
+await page.uploadFile("#fileInput", ["/path/to/file1.jpg", "/path/to/file2.jpg"]);
+
+// Drag and drop a file onto a target
+await page.dragAndDropFile("/path/to/file.jpg", "#dropzone");</code></pre>
+      </section>
+
+      <section id="cookies" class="section">
+        <h2>Cookies</h2>
+        <p>Get and set browser cookies:</p>
+        <pre><code class="language-javascript">// Get cookies for a specific domain
+const cookies = await browser.getCookies("example.com");
+
+// Get all cookies
+const allCookies = await browser.getAllCookies();
+
+// Set cookies
+await browser.setCookies([
+  {
+    name: "sessionId",
+    value: "abc123",
+    domain: "example.com",
+    path: "/",
+    secure: true,
+    httpOnly: false,
+    expirationDate: (Date.now() / 1000) + 3600
+  }
+]);</code></pre>
+      </section>
+
+      <section id="examples" class="section">
+        <h2>Examples</h2>
+        
+        <h3>Basic Navigation</h3>
+        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+
+async function main() {
+  const browser = await pearBrowser({ useChromium: true });
+  const page = await browser.newPage("https://example.com");
+  
+  // Wait for a specific element
+  await page.waitForSelector("h1");
+  
+  // Get page title using evaluate
+  const title = await page.evaluate(() => document.title);
+  console.log("Page title:", title);
+  
+  await browser.close();
+}
+
+main().catch(console.error);</code></pre>
+
+        <h3>Form Submission</h3>
+        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+
+async function main() {
+  const browser = await pearBrowser({ useChromium: true });
+  const page = await browser.newPage("https://example.com/login");
+  
+  // Fill out form
+  await page.type("input[name='username']", "user123");
+  await page.type("input[name='password']", "password123");
+  await page.click("#login-button");
+  
+  // Wait for navigation to complete
+  await page.waitForSelector(".dashboard");
+  console.log("Login successful!");
+  
+  await browser.close();
+}
+
+main().catch(console.error);</code></pre>
+
+        <h3>Web Scraping</h3>
+        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+const fs = require("fs");
+
+async function main() {
+  const browser = await pearBrowser({ useChromium: true });
+  const page = await browser.newPage("https://news-site.com");
+  
+  // Extract article data
+  const articles = await page.evaluate(() => {
+    return Array.from(document.querySelectorAll(".article")).map(article => ({
+      title: article.querySelector(".title").innerText,
+      summary: article.querySelector(".summary").innerText,
+      url: article.querySelector("a").href
+    }));
+  });
+  
+  // Save results to file
+  fs.writeFileSync("articles.json", JSON.stringify(articles, null, 2));
+  console.log(`Scraped ${articles.length} articles`);
+  
+  await browser.close();
+}
+
+main().catch(console.error);</code></pre>
+
+        <h3>With Express Server Integration</h3>
+        <pre><code class="language-javascript">const pearBrowser = require("pear-browser");
+const express = require("express");
+const http = require("http");
+
+async function main() {
+  const app = express();
+  const server = http.createServer(app);
+  
+  app.get('/', (req, res) => {
+    res.send('pear-browser Browser API Server');
+  });
+  
+  server.listen(3000, () => {
+    console.log(`Server running on port 3000`);
+  });
+  
+  const browser = await pearBrowser({
+    server: server,
+    port: 3000,
+    debug: true
+  });
+  
+  // Now browser is integrated with your Express server
+  const page = await browser.newPage("https://example.com");
+  // ...
+}
+
+main().catch(console.error);</code></pre>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+  // Syntax highlighting for code blocks
+  hljs.highlightAll();
+
+  // Active navigation link handling
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+  
+  // Set active nav link based on scroll position
+  window.addEventListener('scroll', () => {
+    let current = '';
+    
+    sections.forEach(section => {
+      const sectionTop = section.offsetTop;
+      const sectionHeight = section.clientHeight;
+      if (pageYOffset >= (sectionTop - 200)) {
+        current = section.getAttribute('id');
+      }
+    });
+    
+    navLinks.forEach(link => {
+      link.classList.remove('active');
+      if (link.getAttribute('href') === `#${current}`) {
+        link.classList.add('active');
+      }
+    });
+  });
+  
+  // Smooth scrolling for navigation links
+  navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      // Set as active immediately for better UX
+      navLinks.forEach(l => l.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+  
+  // Mobile menu toggle (if needed in the future)
+  function setupMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    
+    // Add collapse/expand capability if window is small
+    if (window.innerWidth <= 768) {
+      const navLinks = document.querySelectorAll('.nav-link');
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            // Additional mobile-specific behavior could be added here
+          }
+        });
+      });
+    }
+  }
+  
+  // Call once on load
+  setupMobileMenu();
+  
+  // Monitor for window resizing
+  window.addEventListener('resize', () => {
+    setupMobileMenu();
+  });
+  
+  // Handle copy code functionality (to be implemented if needed)
+  function addCopyCodeButtons() {
+    // Future enhancement: Add copy buttons to code blocks
+  }
+});
+
+  </script>
+ 
+</body>
+</html>
