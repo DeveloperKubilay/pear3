@@ -17,7 +17,7 @@ jobs:
                   registry-url: https://registry.npmjs.org
                   
             - name: 📦 Package setup
-              run: cp LICENSE module/LICENSE
+              run: cp LICENSE module/LICENSE && cp README.md module/README.md
               working-directory: .
 
             - name: 🚀 publish
