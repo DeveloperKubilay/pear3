@@ -2,8 +2,7 @@
 
 A Node.js-based automation framework that simplifies web automation, working with its own Chromium-based browser and extension.
 
-
-
+<img src="https://raw.githubusercontent.com/DeveloperKubilay/pear3/refs/heads/main/image.gif">
 
 ## ⚡️ Usage
 ```js
