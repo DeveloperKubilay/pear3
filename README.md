@@ -2,6 +2,9 @@
 
 A Node.js-based automation framework that simplifies web automation, working with its own Chromium-based browser and extension.
 
+
+
+
 ## ⚡️ Usage
 ```js
 const Pear = require("pear3")
