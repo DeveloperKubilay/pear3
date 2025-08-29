@@ -8,7 +8,6 @@ async function main() {
 
     const page = await browser.newPage();
 
-    await page.goto("https://yandex.com");
     await page.goto("https://google.com");
     await page.directType('textarea', 'Hello Pear!');
     await page.keypress('Enter');
