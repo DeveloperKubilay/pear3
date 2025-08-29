@@ -68,7 +68,7 @@ function createMouseEvent(type, element, options = {}) {
     const rect = element.getBoundingClientRect();
     const x = options.x !== undefined ? options.x : rect.left + rect.width / 2;
     const y = options.y !== undefined ? options.y : rect.top + rect.height / 2;
-    
+
     return new MouseEvent(type, {
         bubbles: true,
         cancelable: true,
@@ -86,12 +86,12 @@ function createMouseEvent(type, element, options = {}) {
 function onMsg(event) {
     const data = JSON.parse(event.data);
     console.log('Received message:', data);
-    
+
     if (data.action === 'newTab') {
         window.open("#id=" + data.id, '_blank');
         return sendMessage(data, { action: false })
-    } 
-    
+    }
+
     // Keyboard events
     else if (data.type === 'keypress' || data.type === 'keydown' || data.type === 'keyup') {
         if (data.type === 'keypress') data.type = 'keydown'; // Normalize to keydown for consistency
@@ -102,7 +102,7 @@ function onMsg(event) {
         target.dispatchEvent(event);
         sendMessage(data, { action: data.type, success: true });
     }
-    
+
     // Mouse events
     else if (['rightclick', 'middleclick', 'leftclick', 'dblclick', 'mousedown', 'mouseup', 'mousemove'].includes(data.type)) {
         try {
@@ -111,10 +111,10 @@ function onMsg(event) {
                 sendMessage(data, { action: data.type, success: false, error: 'Element not found' });
                 return;
             }
-            
+
             const options = data.options || {};
             let eventType = data.type;
-            
+
             if (data.type === 'rightclick') {
                 options.button = 2;
                 options.buttons = 2;
@@ -128,7 +128,7 @@ function onMsg(event) {
                 options.buttons = 1;
                 eventType = 'click';
             }
-            
+
             const event = createMouseEvent(eventType, element, options);
             element.dispatchEvent(event);
             sendMessage(data, { action: data.type, success: true });
@@ -136,39 +136,39 @@ function onMsg(event) {
             sendMessage(data, { action: data.type, success: false, error: error.message });
         }
     }
-    
+
     // Scroll event
     else if (data.type === 'scroll') {
         try {
             const element = data.selector ? document.querySelector(data.selector) : window;
             const options = data.options || {};
-            
+
             if (element === window) {
                 window.scrollBy(options.x || 0, options.y || 0);
             } else {
                 element.scrollBy(options.x || 0, options.y || 0);
             }
-            
+
             sendMessage(data, { action: 'scroll', success: true });
         } catch (error) {
             sendMessage(data, { action: 'scroll', success: false, error: error.message });
         }
     }
-    
+
     // Navigation
     else if (data.type === 'goto') {
         window.location.href = data.url;
     } else if (data.type === 'reload') {
         window.location.reload();
     }
-    
+
     // URL and content
     else if (data.type === "url") {
         sendMessage(data, { action: 'url', url: window.location.href });
     } else if (data.type === "content") {
         sendMessage(data, { action: 'content', content: document.documentElement.outerHTML });
     }
-    
+
     // Screenshot
     else if (data.type === "screenshot") {
         html2canvas(document.body).then(canvas => {
@@ -179,17 +179,17 @@ function onMsg(event) {
             sendMessage(data, { action: 'screenshot', error: err.message });
         });
     }
-    
+
     // Window management
     else if (data.type === 'close') {
         window.close();
     }
-    
+
     // Text input
     else if (data.type === "type" || data.type === "directType") {
         const selector = data.selector;
         const text = data.text || '';
-        
+
         let el;
         if (selector) {
             try {
@@ -211,7 +211,7 @@ function onMsg(event) {
                 return;
             }
         }
-        
+
         if (data.type === "type") {
             [...text].forEach(char => {
                 el.dispatchEvent(createKeyboardEvent('keydown', char));
@@ -231,24 +231,24 @@ function onMsg(event) {
             }
             el.dispatchEvent(new InputEvent('input', { data: text, bubbles: true }));
         }
-        
+
         sendMessage(data, { action: data.type, success: true });
     }
-    
+
     // Wait for selector
     else if (data.type === "waitForSelector") {
         const selector = data.selector;
         const timeout = data.timeout || 30000;
         const checkInterval = data.checkInterval || 100;
         const startTime = Date.now();
-        
+
         const checkElement = () => {
             try {
                 const element = document.querySelector(selector);
                 if (element) {
-                    sendMessage(data, { 
-                        action: 'waitForSelector', 
-                        success: true, 
+                    sendMessage(data, {
+                        action: 'waitForSelector',
+                        success: true,
                         found: true,
                         element: {
                             tagName: element.tagName,
@@ -259,64 +259,64 @@ function onMsg(event) {
                     });
                     return;
                 }
-                
+
                 if (timeout > 0 && Date.now() - startTime > timeout) {
-                    sendMessage(data, { 
-                        action: 'waitForSelector', 
-                        success: false, 
+                    sendMessage(data, {
+                        action: 'waitForSelector',
+                        success: false,
                         found: false,
                         error: `Timeout: Element not found after ${timeout}ms`,
                         selector: selector
                     });
                     return;
                 }
-                
+
                 setTimeout(checkElement, checkInterval);
             } catch (error) {
-                sendMessage(data, { 
-                    action: 'waitForSelector', 
-                    success: false, 
+                sendMessage(data, {
+                    action: 'waitForSelector',
+                    success: false,
                     found: false,
                     error: `Invalid selector: ${selector}`,
                     originalError: error.message
                 });
             }
         };
-        
+
         checkElement();
     }
-    
+
     // File upload
     else if (data.type === "uploadFile") {
         const selector = data.selector;
         const filePath = data.filePath;
-        
+
         try {
             const fileInput = document.querySelector(selector);
-            
+
             if (!fileInput || fileInput.type !== 'file') {
-                sendMessage(data, { 
-                    action: 'uploadFile', 
-                    success: false, 
-                    error: `File input not found or invalid: ${selector}` 
+                sendMessage(data, {
+                    action: 'uploadFile',
+                    success: false,
+                    error: `File input not found or invalid: ${selector}`
                 });
                 return;
             }
-            
+
             fetch(filePath)
                 .then(response => response.blob())
                 .then(blob => {
                     const fileName = filePath.split('/').pop() || 'uploaded-file';
                     const file = new File([blob], fileName, { type: blob.type });
-                    
+
                     const dataTransfer = new DataTransfer();
                     dataTransfer.items.add(file);
-                    
+
                     fileInput.files = dataTransfer.files;
                     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    sendMessage(data, { 
-                        action: 'uploadFile', 
+
+                    sendMessage(data, {
+                        action: 'uploadFile',
                         success: true,
                         fileName: fileName,
                         fileSize: file.size
@@ -324,96 +324,96 @@ function onMsg(event) {
                 })
                 .catch(error => {
                     if (filePath.startsWith('file://') || !filePath.startsWith('http')) {
-                        sendMessage(data, { 
-                            action: 'uploadFile', 
-                            success: false, 
-                            error: `Cannot access local file: ${filePath}. Use URL or base64 data.` 
+                        sendMessage(data, {
+                            action: 'uploadFile',
+                            success: false,
+                            error: `Cannot access local file: ${filePath}. Use URL or base64 data.`
                         });
                     } else {
-                        sendMessage(data, { 
-                            action: 'uploadFile', 
-                            success: false, 
-                            error: `Failed to load file: ${error.message}` 
+                        sendMessage(data, {
+                            action: 'uploadFile',
+                            success: false,
+                            error: `Failed to load file: ${error.message}`
                         });
                     }
                 });
         } catch (error) {
-            sendMessage(data, { 
-                action: 'uploadFile', 
-                success: false, 
-                error: `Upload error: ${error.message}` 
+            sendMessage(data, {
+                action: 'uploadFile',
+                success: false,
+                error: `Upload error: ${error.message}`
             });
         }
     }
-    
+
     // Get attribute
     else if (data.type === "getAttribute") {
         const selector = data.selector;
         const attribute = data.attribute;
-        
+
         try {
             const element = document.querySelector(selector);
-            
+
             if (!element) {
-                sendMessage(data, { 
-                    action: 'getAttribute', 
-                    success: false, 
-                    error: `Element not found: ${selector}` 
+                sendMessage(data, {
+                    action: 'getAttribute',
+                    success: false,
+                    error: `Element not found: ${selector}`
                 });
                 return;
             }
-            
+
             const value = element.getAttribute(attribute);
-            
-            sendMessage(data, { 
-                action: 'getAttribute', 
+
+            sendMessage(data, {
+                action: 'getAttribute',
                 success: true,
                 value: value,
                 selector: selector,
                 attribute: attribute
             });
         } catch (error) {
-            sendMessage(data, { 
-                action: 'getAttribute', 
-                success: false, 
-                error: `Error getting attribute: ${error.message}` 
+            sendMessage(data, {
+                action: 'getAttribute',
+                success: false,
+                error: `Error getting attribute: ${error.message}`
             });
         }
     }
-    
+
     // Get text
     else if (data.type === "getText") {
         const selector = data.selector;
-        
+
         try {
             const element = document.querySelector(selector);
-            
+
             if (!element) {
-                sendMessage(data, { 
-                    action: 'getText', 
-                    success: false, 
-                    error: `Element not found: ${selector}` 
+                sendMessage(data, {
+                    action: 'getText',
+                    success: false,
+                    error: `Element not found: ${selector}`
                 });
                 return;
             }
-            
+
             const text = element.textContent || element.innerText || '';
-            
-            sendMessage(data, { 
-                action: 'getText', 
+
+            sendMessage(data, {
+                action: 'getText',
                 success: true,
                 text: text.trim(),
                 selector: selector
             });
         } catch (error) {
-            sendMessage(data, { 
-                action: 'getText', 
-                success: false, 
-                error: `Error getting text: ${error.message}` 
+            sendMessage(data, {
+                action: 'getText',
+                success: false,
+                error: `Error getting text: ${error.message}`
             });
         }
     }
-    
+
     else {
         console.warn('Unknown action:', data.action || data.type);
     }
