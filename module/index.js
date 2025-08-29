@@ -36,8 +36,9 @@ module.exports = async function (app) {
             app.cookies = JSON.parse(fs.readFileSync(app.cookies, 'utf-8'));
         else if (typeof app.cookies === 'string')
             app.cookies = JSON.parse(app.cookies);
-        settings.cookies = app.cookies;
-    }
+    } else
+        app.cookies = [];
+    settings.cookies = app.cookies;
 
     fs.writeFileSync(path.join(__dirname, 'extension/settings.json'), JSON.stringify(settings, null, 2));
 
