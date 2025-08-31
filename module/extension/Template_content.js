@@ -3,7 +3,7 @@
 let ws = null;
 let wsQueue = [];
 
-ws = new WebSocket(`ws://${"http://localhost:9222".replace("http://", "").replace("https://", "")}`);
+ws = new WebSocket(`ws://${"__PEARSYSTEM_ENDPOINT__".replace("http://", "").replace("https://", "")}`);
 ws.onopen = () => {
     while (wsQueue.length) ws.send(wsQueue.shift());
     console.log('WebSocket connection established');
@@ -421,7 +421,7 @@ function onMsg(event) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === "tabCreated") {
-        const id = window.location.href.startsWith("http://localhost:9222") ?
+        const id = window.location.href.startsWith("__PEARSYSTEM_ENDPOINT__") ?
             window.location.hash?.split('=')[1] : msg.tabId;
         sendMessage(id, { action: 'init', id: id, newid: msg.tabId });
     }
