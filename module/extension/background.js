@@ -5,7 +5,23 @@ chrome.runtime.onInstalled.addListener(async () => {
     const cookies = settings.cookies || [];
 
     for (const cookie of cookies) {
-        await chrome.cookies.set(cookie);
+        console.log(cookie);
+        const protocol = cookie.secure ? 'https://' : 'http://';
+        const domain = cookie.domain.replace(/^\./, '');
+        const url = protocol + domain;
+        const validCookie = {
+            url: url,
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain,
+            path: cookie.path,
+            secure: cookie.secure,
+            httpOnly: cookie.httpOnly,
+            sameSite: cookie.sameSite,
+            expirationDate: cookie.expirationDate,
+            storeId: cookie.storeId
+        };
+        await chrome.cookies.set(validCookie);
     }
 });
 

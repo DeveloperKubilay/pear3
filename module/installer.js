@@ -54,7 +54,7 @@ async function downloadChrome() {
     createDirectory();
 
     return new Promise((resolve, reject) => {
-        console.log(`Installing Chrome for ${os.platform()} from: ${chromeUrl}`);
+        console.log(`Installing Chromium for ${os.platform()} from: ${chromeUrl}`);
 
         const file = fs.createWriteStream(zipFilePath);
         https.get(chromeUrl, (response) => {

@@ -4,6 +4,8 @@ const installer = require('./installer.js');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const os = require('os');
+const crypto = require('crypto');
 
 module.exports = async function (app) {
 
@@ -59,13 +61,17 @@ module.exports = async function (app) {
     if (app.disableGpu) args.push('--disable-gpu');
     if (app.nosandbox) args.push('--no-sandbox');
     if (app.proxy) args.push(`--proxy-server=${app.proxy}`);
-    if (app.profileDir) {
-        if (!fs.existsSync(app.profileDir)) fs.mkdirSync(app.profileDir, { recursive: true });
-        args.push(`--user-data-dir=${app.profileDir}`);
+    if (!app.profileDir) {
+        app.profileDir = path.join(os.tmpdir(), 'chrome-profile-' + crypto.randomBytes(8).toString('hex'));
     }
+    if (!fs.existsSync(app.profileDir)) fs.mkdirSync(app.profileDir, { recursive: true });
+    if (app.profileDir) args.push(`--user-data-dir=${app.profileDir}`);
     if (app.muteaudio) args.push('--mute-audio');
 
-    args.push("http://localhost:8191");
+    app.fullEndpoint = `${app.endpoint || "http://localhost"}:${app.port || 8191}`;
+    args.push(app.fullEndpoint);
+    const file = fs.readFileSync(path.join(__dirname, 'extension/Template_content.js'), 'utf-8');
+    fs.writeFileSync(path.join(__dirname, 'extension/index.js'), file.replace(/__PEARSYSTEM_ENDPOINT__/g, app.fullEndpoint));
 
     const indexHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
     const SettingsJson = fs.readFileSync(path.join(__dirname, 'extension/settings.json'), 'utf-8');
@@ -85,7 +91,7 @@ module.exports = async function (app) {
 
     wss.on('connection', (socket) => {
         if (!firstConnection) {
-            console.log('\x1b[32m%s\x1b[0m', 'PearSystem started');
+            if(app.debug) console.log('\x1b[32m%s\x1b[0m', 'PearSystem started');
             firstConnection = socket;
         }
         socket.on('message', (message) => {
@@ -100,8 +106,8 @@ module.exports = async function (app) {
         });
     });
 
-    server.listen(8191, () => {
-        console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
+    server.listen(app.port || 8191, () => {
+        if(app.debug) console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
     exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {

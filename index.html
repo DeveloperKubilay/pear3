@@ -278,6 +278,7 @@ p code, li code {
         <li><a href="#screenshots" class="nav-link">Screenshots</a></li>
         <li><a href="#file-upload" class="nav-link">File Upload</a></li>
         <li><a href="#wait-methods" class="nav-link">Wait Methods</a></li>
+        <li><a href="#websocket-endpoint" class="nav-link">WebSocket Endpoint</a></li>
         <li><a href="#examples" class="nav-link">Examples</a></li>
       </ul>
       <div class="sidebar-footer">
@@ -360,7 +361,9 @@ main().catch(console.error);</code></pre>
   nosandbox: false,                    // Disable sandbox (Linux)
   proxy: "http://proxy:8080",          // Proxy server
   muteaudio: false,                    // Mute audio
-  cookies: cookieArray                 // Pre-load cookies
+  cookies: cookieArray,                // Pre-load cookies
+  endpoint: "http://localhost",        // WebSocket endpoint host
+  port: 8191                           // WebSocket endpoint port
 });</code></pre>
 
         <h3>Browser Methods</h3>
@@ -378,6 +381,18 @@ main().catch(console.error);</code></pre>
             <p>Closes the browser instance and all associated resources.</p>
           </li>
         </ul>
+
+        <h3>WebSocket Endpoint Configuration</h3>
+        <p>pear3 communicates with the browser via WebSocket. By default, it uses <code>http://localhost:8191</code> as the endpoint.</p>
+        <pre><code class="language-javascript">// Custom endpoint example
+const browser = await Pear({
+  endpoint: "http://192.168.1.100",  // Custom host
+  port: 9000                         // Custom port
+});</code></pre>
+        <div class="info-box">
+          <h4>Endpoint Requirements:</h4>
+          <p>The endpoint must be accessible from the browser extension. For remote setups, ensure the WebSocket server is reachable and properly configured.</p>
+        </div>
       </section>
 
       <section id="page-api" class="section">
@@ -492,6 +507,12 @@ await page.scroll('#container', { y: -200 }); // Scroll element up</code></pre>
         
         <ul class="method-list">
           <li>
+            <span class="method-name">.click(selector)</span>
+            <p>Click on an element by selector.</p>
+            <pre><code class="language-javascript">await page.click('#submit-btn');
+await page.click('.menu-item');</code></pre>
+          </li>
+          <li>
             <span class="method-name">.getAttribute(selector, attribute)</span>
             <p>Get an element's attribute value.</p>
             <pre><code class="language-javascript">const href = await page.getAttribute('a#main-link', 'href');
@@ -530,6 +551,43 @@ await page.uploadFile('#file-input', 'https://example.com/image.jpg');
           <h4>File Path Requirements:</h4>
           <p>Files must be accessible via HTTP/HTTPS URLs. Local file:// paths have browser security restrictions. Consider serving local files through a local HTTP server.</p>
         </div>
+      </section>
+
+      <section id="websocket-endpoint" class="section">
+        <h2>WebSocket Endpoint Configuration</h2>
+        <p>pear3 uses WebSocket communication between your Node.js application and the Chrome extension. Configure the endpoint to match your setup:</p>
+        
+        <h3>Default Configuration</h3>
+        <p>By default, pear3 uses <code>localhost</code> as the host and <code>8191</code> as the port:</p>
+        <pre><code class="language-javascript">const browser = await Pear(); // Uses http://localhost:8191</code></pre>
+
+        <h3>Custom Endpoint</h3>
+        <p>For remote servers or custom ports:</p>
+        <pre><code class="language-javascript">const browser = await Pear({
+  endpoint: "http://192.168.1.100",  // Remote host
+  port: 9000                         // Custom port
+});</code></pre>
+
+        <h3>Network Requirements</h3>
+        <div class="info-box">
+          <h4>Important:</h4>
+          <p>The WebSocket endpoint must be accessible from the browser. For remote setups:</p>
+          <ul>
+            <li>Ensure the port is open in your firewall</li>
+            <li>Use HTTPS for production environments</li>
+            <li>Configure CORS if needed</li>
+            <li>Test connectivity before deployment</li>
+          </ul>
+        </div>
+
+        <h3>Troubleshooting</h3>
+        <p>If you encounter connection issues:</p>
+        <ul>
+          <li>Verify the endpoint URL is correct</li>
+          <li>Check that the port is not blocked</li>
+          <li>Ensure the WebSocket server is running</li>
+          <li>Use browser developer tools to inspect WebSocket connections</li>
+        </ul>
       </section>
 
       <section id="wait-methods" class="section">
