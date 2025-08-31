@@ -91,7 +91,7 @@ module.exports = async function (app) {
 
     wss.on('connection', (socket) => {
         if (!firstConnection) {
-            if(app.debug) console.log('\x1b[32m%s\x1b[0m', 'PearSystem started');
+            if (app.debug) console.log('\x1b[32m%s\x1b[0m', 'PearSystem started');
             firstConnection = socket;
         }
         socket.on('message', (message) => {
@@ -107,7 +107,7 @@ module.exports = async function (app) {
     });
 
     server.listen(app.port || 8191, () => {
-        if(app.debug) console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
+        if (app.debug) console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
     exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
@@ -126,7 +126,7 @@ module.exports = async function (app) {
 
     let id = 0;
     const AsyncPromieses = {};
-    
+
     async function asyncSystem(session, command, options = {}) {
         if (!command) command = session, session = null;
         return new Promise((resolve, reject) => {
@@ -152,12 +152,15 @@ module.exports = async function (app) {
                 command.url = args[0];
                 result = await asyncSystem(session, command, { goto: true });
                 break;
-                
+            case 'setTimeout':
+                result = new Promise((resolve) => setTimeout(resolve, args[0]));
+                break;
+
             case 'click':
                 command[0] = args[0]; // CSS selector for legacy click
                 result = await asyncSystem(session, command);
                 break;
-                
+
             // Keyboard events
             case 'keypress':
             case 'keydown':
@@ -167,7 +170,7 @@ module.exports = async function (app) {
                 command.options = args[2] || {}; // optional options
                 result = await asyncSystem(session, command);
                 break;
-                
+
             // Mouse events
             case 'leftclick':
             case 'rightclick':
@@ -180,20 +183,20 @@ module.exports = async function (app) {
                 command.options = args[1] || {}; // optional options (x, y, etc.)
                 result = await asyncSystem(session, command);
                 break;
-                
+
             case 'scroll':
                 command.selector = args[0]; // optional selector (if null, scrolls window)
                 command.options = args[1] || {}; // { x, y }
                 result = await asyncSystem(session, command);
                 break;
-                
+
             case 'type':
             case 'directType':
                 command.selector = args[0]; // CSS selector
                 command.text = args[1]; // Text to type
                 result = await asyncSystem(session, command);
                 break;
-                
+
             case 'waitForSelector':
                 command.selector = args[0]; // CSS selector
                 const options = args[1] || {}; // Options object
@@ -201,24 +204,24 @@ module.exports = async function (app) {
                 command.checkInterval = options.checkInterval || 100;
                 result = await asyncSystem(session, command);
                 break;
-                
+
             case 'uploadFile':
                 command.selector = args[0]; // File input selector
                 command.filePath = args[1]; // File path to upload
                 result = await asyncSystem(session, command);
                 break;
-                
+
             case 'getAttribute':
                 command.selector = args[0]; // CSS selector
                 command.attribute = args[1]; // Attribute name
                 result = await asyncSystem(session, command);
                 break;
-                
+
             case 'getText':
                 command.selector = args[0]; // CSS selector
                 result = await asyncSystem(session, command);
                 break;
-                
+
             default:
                 result = await asyncSystem(session, command);
         }
@@ -245,19 +248,19 @@ module.exports = async function (app) {
             url: createMethod('url')(id),
             reload: createMethod('reload')(id),
             close: createMethod('close')(id),
-            
+
             // Content & Screenshots
             screenshot: createMethod('screenshot')(id),
             content: createMethod('content')(id),
-            
+
             // Legacy click (maintained for compatibility)
             click: createMethod('click')(id),
-            
+
             // Keyboard events
             keypress: createMethod('keypress')(id),
             keydown: createMethod('keydown')(id),
             keyup: createMethod('keyup')(id),
-            
+
             // Mouse events
             leftclick: createMethod('leftclick')(id),
             rightclick: createMethod('rightclick')(id),
@@ -266,23 +269,25 @@ module.exports = async function (app) {
             mousedown: createMethod('mousedown')(id),
             mouseup: createMethod('mouseup')(id),
             mousemove: createMethod('mousemove')(id),
-            
+
             // Scroll
             scroll: createMethod('scroll')(id),
-            
+
             // Text input
             type: createMethod('type')(id),
             directType: createMethod('directType')(id),
-            
+
             // Utility methods
             waitForSelector: createMethod('waitForSelector')(id),
             uploadFile: createMethod('uploadFile')(id),
             getAttribute: createMethod('getAttribute')(id),
             getText: createMethod('getText')(id),
+            setTimeout: createMethod('setTimeout')(id),
         }
     }
-    
+
     app.newTab = app.newPage
+    app.setTimeout = (x) => new Promise((resolve) => setTimeout(resolve, x));
     app.close = function () {
         wss.close();
         server.close();
