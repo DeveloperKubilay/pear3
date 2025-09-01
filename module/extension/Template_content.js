@@ -445,8 +445,59 @@ function onMsg(event) {
         }
     }
 
-    else {
-        console.warn('Unknown action:', data.action || data.type);
+    // Shadow query selector
+    else if (data.type === "shadowQuerySelector") {
+        try {
+            const element = document.querySelector(data.selector);
+            if (element && element.shadowRoot) {
+                const shadowElement = element.shadowRoot.querySelector(data.shadowSelector);
+                if (shadowElement) {
+                    sendMessage(data, {
+                        action: 'shadowQuerySelector',
+                        success: true,
+                        element: {
+                            tagName: shadowElement.tagName,
+                            id: shadowElement.id,
+                            className: shadowElement.className,
+                            textContent: shadowElement.textContent?.substring(0, 100)
+                        }
+                    });
+                } else {
+                    sendMessage(data, { action: 'shadowQuerySelector', success: false, error: 'Shadow element not found' });
+                }
+            } else {
+                sendMessage(data, { action: 'shadowQuerySelector', success: false, error: 'Element or shadowRoot not found' });
+            }
+        } catch (error) {
+            sendMessage(data, { action: 'shadowQuerySelector', success: false, error: error.message });
+        }
+    }
+
+    // Shadow get attribute
+    else if (data.type === "shadowGetAttribute") {
+        try {
+            const element = document.querySelector(data.selector);
+            if (element && element.shadowRoot) {
+                const shadowElement = element.shadowRoot.querySelector(data.shadowSelector);
+                if (shadowElement) {
+                    const value = shadowElement.getAttribute(data.attribute);
+                    sendMessage(data, {
+                        action: 'shadowGetAttribute',
+                        success: true,
+                        value: value,
+                        selector: data.selector,
+                        shadowSelector: data.shadowSelector,
+                        attribute: data.attribute
+                    });
+                } else {
+                    sendMessage(data, { action: 'shadowGetAttribute', success: false, error: 'Shadow element not found' });
+                }
+            } else {
+                sendMessage(data, { action: 'shadowGetAttribute', success: false, error: 'Element or shadowRoot not found' });
+            }
+        } catch (error) {
+            sendMessage(data, { action: 'shadowGetAttribute', success: false, error: error.message });
+        }
     }
 }
 

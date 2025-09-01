@@ -221,6 +221,11 @@ module.exports = async function (app) {
                 result = await asyncSystem(session, command);
                 break;
 
+            case 'querySelector':
+                command.selector = args[0]; // CSS selector
+                result = await asyncSystem(session, command);
+                break;
+
             case 'getText':
                 command.selector = args[0]; // CSS selector
                 result = await asyncSystem(session, command);
@@ -229,6 +234,19 @@ module.exports = async function (app) {
             case 'shadowClick':
                 command.selector = args[0];
                 command.shadowSelector = args[1];
+                result = await asyncSystem(session, command);
+                break;
+
+            case 'shadowQuerySelector':
+                command.selector = args[0];
+                command.shadowSelector = args[1];
+                result = await asyncSystem(session, command);
+                break;
+
+            case 'shadowGetAttribute':
+                command.selector = args[0];
+                command.shadowSelector = args[1];
+                command.attribute = args[2];
                 result = await asyncSystem(session, command);
                 break;
 
@@ -295,7 +313,10 @@ module.exports = async function (app) {
             uploadFile: createMethod('uploadFile')(id),
             getAttribute: createMethod('getAttribute')(id),
             getText: createMethod('getText')(id),
+            querySelector: createMethod('querySelector')(id),
             shadowClick: createMethod('shadowClick')(id),
+            shadowQuerySelector: createMethod('shadowQuerySelector')(id),
+            shadowGetAttribute: createMethod('shadowGetAttribute')(id),
             evaluate: createMethod('evaluate')(id),
             setTimeout: createMethod('setTimeout')(id),
         }
