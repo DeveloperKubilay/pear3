@@ -539,6 +539,23 @@ await page.shadowClick('#shadow-host', 'button.submit-btn');
 await page.shadowClick('#outer-shadow', '#inner-shadow .deep-element');</code></pre>
           </li>
           <li>
+            <span class="method-name">.shadowQuerySelector(selector, shadowSelector)</span>
+            <p>Query an element inside a Shadow DOM and return its information.</p>
+            <pre><code class="language-javascript">// Get information about a shadow element
+const elementInfo = await page.shadowQuerySelector('#shadow-host', '.shadow-button');
+
+// Returns: { tagName, id, className, textContent, ... }
+console.log(elementInfo.tagName); // 'BUTTON'
+console.log(elementInfo.textContent); // Button text</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.shadowGetAttribute(selector, shadowSelector, attribute)</span>
+            <p>Get an attribute value from an element inside a Shadow DOM.</p>
+            <pre><code class="language-javascript">// Get attribute from shadow element
+const href = await page.shadowGetAttribute('#shadow-host', 'a.shadow-link', 'href');
+const value = await page.shadowGetAttribute('#shadow-host', 'input.shadow-input', 'value');</code></pre>
+          </li>
+          <li>
             <span class="method-name">.evaluate(func, args)</span>
             <p>Execute JavaScript code in the page context and return the result.</p>
             <pre><code class="language-javascript">// Simple evaluation
