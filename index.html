@@ -529,6 +529,33 @@ const className = await page.getAttribute('.item', 'class');</code></pre>
             <pre><code class="language-javascript">const buttonText = await page.getText('#submit-btn');
 const headingText = await page.getText('h1');</code></pre>
           </li>
+          <li>
+            <span class="method-name">.shadowClick(selector, shadowSelector)</span>
+            <p>Click on an element inside a Shadow DOM.</p>
+            <pre><code class="language-javascript">// Click on a button inside a shadow root
+await page.shadowClick('#shadow-host', 'button.submit-btn');
+
+// Click on nested shadow elements
+await page.shadowClick('#outer-shadow', '#inner-shadow .deep-element');</code></pre>
+          </li>
+          <li>
+            <span class="method-name">.evaluate(func, args)</span>
+            <p>Execute JavaScript code in the page context and return the result.</p>
+            <pre><code class="language-javascript">// Simple evaluation
+const title = await page.evaluate(() => document.title);
+
+// With arguments
+const result = await page.evaluate((a, b) => a + b, [5, 10]);
+
+// Complex operations
+const data = await page.evaluate(() => {
+  const items = document.querySelectorAll('.item');
+  return Array.from(items).map(item => ({
+    text: item.textContent,
+    href: item.href
+  }));
+});</code></pre>
+          </li>
         </ul>
       </section>
 
