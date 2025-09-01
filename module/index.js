@@ -222,8 +222,17 @@ module.exports = async function (app) {
                 result = await asyncSystem(session, command);
                 break;
 
-            default:
+            case 'shadowClick':
+                command.selector = args[0];
+                command.shadowSelector = args[1];
                 result = await asyncSystem(session, command);
+                break;
+
+            case 'evaluate':
+                command.func = args[0];
+                command.args = args[1] || [];
+                result = await asyncSystem(session, command);
+                break;
         }
 
         if (type === "screenshot" && result.screenshot) {
@@ -282,6 +291,8 @@ module.exports = async function (app) {
             uploadFile: createMethod('uploadFile')(id),
             getAttribute: createMethod('getAttribute')(id),
             getText: createMethod('getText')(id),
+            shadowClick: createMethod('shadowClick')(id),
+            evaluate: createMethod('evaluate')(id),
             setTimeout: createMethod('setTimeout')(id),
         }
     }

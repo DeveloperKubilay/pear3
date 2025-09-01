@@ -414,6 +414,37 @@ function onMsg(event) {
         }
     }
 
+    // Evaluate
+    else if (data.type === "evaluate") {
+        try {
+            const func = new Function('return ' + data.func)();
+            const result = func(...data.args);
+            sendMessage(data, { action: 'evaluate', result });
+        } catch (error) {
+            sendMessage(data, { action: 'evaluate', error: error.message });
+        }
+    }
+
+    // Shadow click
+    else if (data.type === "shadowClick") {
+        try {
+            const element = document.querySelector(data.selector);
+            if (element && element.shadowRoot) {
+                const shadowElement = element.shadowRoot.querySelector(data.shadowSelector);
+                if (shadowElement) {
+                    shadowElement.click();
+                    sendMessage(data, { action: 'shadowClick', success: true });
+                } else {
+                    sendMessage(data, { action: 'shadowClick', success: false, error: 'Shadow element not found' });
+                }
+            } else {
+                sendMessage(data, { action: 'shadowClick', success: false, error: 'Element or shadowRoot not found' });
+            }
+        } catch (error) {
+            sendMessage(data, { action: 'shadowClick', success: false, error: error.message });
+        }
+    }
+
     else {
         console.warn('Unknown action:', data.action || data.type);
     }
