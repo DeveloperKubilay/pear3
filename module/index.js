@@ -68,7 +68,7 @@ module.exports = async function (app) {
         if (app.profileDir == true) return;
         app.profileDir = path.join(process.cwd(), app.profileDir);
         if (!fs.existsSync(app.profileDir)) fs.mkdirSync(app.profileDir, { recursive: true });
-        args.push(`--user-data-dir=${app.profileDir}`);
+        args.push(`--user-data-dir="${app.profileDir}"`);
     }
     if (app.muteaudio) args.push('--mute-audio');
 
