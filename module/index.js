@@ -105,10 +105,20 @@ module.exports = async function (app) {
             const data = JSON.parse(message);
             if (data.action === false) return;
             if (data.action === 'init') {
-                connections[data.newid] = socket;
+                if (data.newid !== undefined) connections[data.newid] = socket;
+                if (data.id !== undefined) connections[data.id] = socket;
+                if (data.session !== undefined) connections[data.session] = socket;
+                clearNavigationPending(data.id);
+                clearNavigationPending(data.newid);
             }
             AsyncPromieses[data?.id]?.resolve(data);
             delete AsyncPromieses[data?.id];
+        });
+
+        socket.on('close', () => {
+            Object.keys(connections).forEach((key) => {
+                if (connections[key] === socket) delete connections[key];
+            });
         });
     });
 
@@ -132,12 +142,47 @@ module.exports = async function (app) {
 
     let id = 0;
     const AsyncPromieses = {};
+    const navigationPending = new Map();
+
+    const toSessionKey = (value) => {
+        if (value === null || value === undefined) return null;
+        return String(value);
+    };
+
+    const markNavigationPending = (session) => {
+        const key = toSessionKey(session);
+        if (!key) return;
+        navigationPending.set(key, Date.now());
+    };
+
+    const clearNavigationPending = (session) => {
+        const key = toSessionKey(session);
+        if (!key) return;
+        navigationPending.delete(key);
+    };
+
+    const waitForNavigationSettled = async (session, timeout = 15000, interval = 50) => {
+        const key = toSessionKey(session);
+        if (!key) return;
+        if (!navigationPending.has(key)) return;
+        const start = Date.now();
+        while (navigationPending.has(key)) {
+            if (Date.now() - start > timeout) {
+                throw new Error(`Navigation pending for session ${key} exceeded ${timeout}ms`);
+            }
+            await new Promise((resolve) => setTimeout(resolve, interval));
+        }
+    };
 
     async function asyncSystem(session, command, options = {}) {
         if (!command) command = session, session = null;
-        const maxAttempts = options.maxAttempts || 3;
-        const retryDelay = options.retryDelay || 100;
-        const feedbackTimeout = options.feedbackTimeout || 500;
+        const maxAttempts = options.maxAttempts ?? 3;
+        const retryDelay = options.retryDelay ?? 100;
+        const expectAck = options.expectAck !== false;
+        const feedbackTimeout = expectAck
+            ? (options.feedbackTimeout ?? 500)
+            : null;
+        const overallTimeout = options.overallTimeout ?? null;
 
         return new Promise((resolve, reject) => {
             if (!options.goto) command.id = id++;
@@ -146,19 +191,24 @@ module.exports = async function (app) {
             let attempts = 0;
             let responded = false;
             let feedbackTimer;
+            let overallTimer;
 
             const cleanup = () => {
                 if (feedbackTimer) clearTimeout(feedbackTimer);
+                if (overallTimer) clearTimeout(overallTimer);
                 delete AsyncPromieses[command.id];
             };
 
             const fail = (error) => {
+                if (responded) return;
+                responded = true;
                 cleanup();
                 reject(error);
             };
 
-            const scheduleRetry = () => {
+            const scheduleRetry = (reason) => {
                 if (responded) return;
+                if (reason === 'feedback' && !expectAck) return;
                 if (attempts >= maxAttempts) {
                     fail(new Error(`Command ${command.id} failed after ${maxAttempts} attempts`));
                     return;
@@ -167,43 +217,43 @@ module.exports = async function (app) {
             };
 
             const armFeedbackTimer = () => {
+                if (!expectAck || feedbackTimeout === null) return;
                 if (feedbackTimer) clearTimeout(feedbackTimer);
                 feedbackTimer = setTimeout(() => {
-                    scheduleRetry();
+                    scheduleRetry('feedback');
                 }, feedbackTimeout);
+            };
+
+            const attemptSend = (target) => {
+                attempts += 1;
+                try {
+                    target.send(JSON.stringify(command));
+                    armFeedbackTimer();
+                } catch (error) {
+                    scheduleRetry('connection');
+                }
             };
 
             const dispatch = () => {
                 if (responded) return;
-                attempts += 1;
 
                 if (!session) {
                     if (!firstConnection) {
-                        scheduleRetry();
+                        scheduleRetry('connection');
                         return;
                     }
-                    try {
-                        firstConnection.send(JSON.stringify(command));
-                        armFeedbackTimer();
-                    } catch (error) {
-                        scheduleRetry();
-                    }
+                    attemptSend(firstConnection);
                     return;
                 }
 
                 const target = connections[session];
                 if (!target) {
-                    scheduleRetry();
+                    scheduleRetry('connection');
                     return;
                 }
 
                 command.session = session;
-                try {
-                    target.send(JSON.stringify(command));
-                    armFeedbackTimer();
-                } catch (error) {
-                    scheduleRetry();
-                }
+                attemptSend(target);
             };
 
             AsyncPromieses[command.id] = {
@@ -220,6 +270,12 @@ module.exports = async function (app) {
             };
 
             dispatch();
+
+            if (overallTimeout && !responded) {
+                overallTimer = setTimeout(() => {
+                    fail(new Error(`Command ${command.id} timed out after ${overallTimeout}ms`));
+                }, overallTimeout);
+            }
         });
     }
 
@@ -227,11 +283,23 @@ module.exports = async function (app) {
     const createMethod = (type) => (session) => async (...args) => {
         const command = { type };
         let result;
+        const requiresNavigationReady = !['goto', 'reload', 'setTimeout'].includes(type);
+
+        if (requiresNavigationReady) {
+            await waitForNavigationSettled(session);
+        }
 
         switch (type) {
             case 'goto':
                 command.url = args[0];
-                result = await asyncSystem(session, command, { goto: true });
+                if (session !== null && session !== undefined) markNavigationPending(session);
+                result = await asyncSystem(session, command, {
+                    goto: true,
+                    maxAttempts: 6,
+                    retryDelay: 300,
+                    expectAck: false,
+                    overallTimeout: 20000
+                });
                 break;
             case 'setTimeout':
                 result = new Promise((resolve) => setTimeout(resolve, args[0]));
@@ -269,6 +337,16 @@ module.exports = async function (app) {
                 command.selector = args[0]; // optional selector (if null, scrolls window)
                 command.options = args[1] || {}; // { x, y }
                 result = await asyncSystem(session, command);
+                break;
+
+            case 'reload':
+                if (session !== null && session !== undefined) markNavigationPending(session);
+                result = await asyncSystem(session, command, {
+                    maxAttempts: 6,
+                    retryDelay: 300,
+                    expectAck: false,
+                    overallTimeout: 20000
+                });
                 break;
 
             case 'type':
@@ -364,7 +442,11 @@ module.exports = async function (app) {
     };
 
     app.newPage = async function () {
-        const newTabData = (await asyncSystem({ action: 'newTab' }));
+        const newTabData = await asyncSystem({ action: 'newTab' }, undefined, {
+            maxAttempts: 1,
+            retryDelay: 0,
+            feedbackTimeout: 7000
+        });
         const id = newTabData.newid;
 
         return {

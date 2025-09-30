@@ -17,8 +17,16 @@ ws.onclose = () => {
     window.close();
 };
 
+function resolveSessionId(session) {
+    if (session && typeof session === 'object') {
+        if (session.id !== undefined && session.id !== null) return session.id;
+        if (session.session !== undefined && session.session !== null) return session.session;
+    }
+    return session;
+}
+
 function sendMessage(session, data) {
-    const msg = JSON.stringify({ id: session.id, ...data });
+    const msg = JSON.stringify({ id: resolveSessionId(session), ...data });
     if (ws.readyState === 1) {
         ws.send(msg);
     } else {
@@ -89,7 +97,7 @@ function onMsg(event) {
 
     if (data.action === 'newTab') {
         window.open("#id=" + data.id, '_blank');
-        return sendMessage(data, { action: false })
+        return;
     }
 
     // Keyboard events
@@ -157,9 +165,13 @@ function onMsg(event) {
 
     // Navigation
     else if (data.type === 'goto') {
-        window.location.href = data.url;
+        setTimeout(() => {
+            window.location.href = data.url;
+        }, 0);
     } else if (data.type === 'reload') {
-        window.location.reload();
+        setTimeout(() => {
+            window.location.reload();
+        }, 0);
     }
 
     // URL and content
@@ -503,9 +515,9 @@ function onMsg(event) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === "tabCreated") {
-        const id = window.location.href.startsWith("__PEARSYSTEM_ENDPOINT__") ?
-            window.location.hash?.split('=')[1] : msg.tabId;
-        sendMessage(id, { action: 'init', id: id, newid: msg.tabId });
+        const hashId = window.location.hash?.split('=')[1];
+        const sessionId = hashId || msg.tabId;
+        sendMessage({ id: sessionId }, { action: 'init', id: sessionId, newid: msg.tabId, url: window.location.href });
     }
     console.log("Message received:", msg);
     sendResponse({ ok: true });
