@@ -179,9 +179,7 @@ module.exports = async function (app) {
         const maxAttempts = options.maxAttempts ?? 3;
         const retryDelay = options.retryDelay ?? 100;
         const expectAck = options.expectAck !== false;
-        const feedbackTimeout = expectAck
-            ? (options.feedbackTimeout ?? 500)
-            : null;
+        const feedbackTimeout = expectAck ? (options.feedbackTimeout ?? 500) : null;
         const overallTimeout = options.overallTimeout ?? null;
 
         return new Promise((resolve, reject) => {
@@ -196,7 +194,7 @@ module.exports = async function (app) {
             const cleanup = () => {
                 if (feedbackTimer) clearTimeout(feedbackTimer);
                 if (overallTimer) clearTimeout(overallTimer);
-                delete AsyncPromieses[command.id];
+                if (expectAck) delete AsyncPromieses[command.id];
             };
 
             const fail = (error) => {
@@ -204,6 +202,13 @@ module.exports = async function (app) {
                 responded = true;
                 cleanup();
                 reject(error);
+            };
+
+            const succeed = (value = { success: true }) => {
+                if (responded) return;
+                responded = true;
+                cleanup();
+                resolve(value);
             };
 
             const scheduleRetry = (reason) => {
@@ -228,7 +233,11 @@ module.exports = async function (app) {
                 attempts += 1;
                 try {
                     target.send(JSON.stringify(command));
-                    armFeedbackTimer();
+                    if (expectAck) {
+                        armFeedbackTimer();
+                    } else {
+                        succeed({ sent: true });
+                    }
                 } catch (error) {
                     scheduleRetry('connection');
                 }
@@ -256,18 +265,16 @@ module.exports = async function (app) {
                 attemptSend(target);
             };
 
-            AsyncPromieses[command.id] = {
-                resolve: (value) => {
-                    responded = true;
-                    cleanup();
-                    resolve(value);
-                },
-                reject: (error) => {
-                    responded = true;
-                    cleanup();
-                    reject(error);
-                }
-            };
+            if (expectAck) {
+                AsyncPromieses[command.id] = {
+                    resolve: (value) => {
+                        succeed(value);
+                    },
+                    reject: (error) => {
+                        fail(error);
+                    }
+                };
+            }
 
             dispatch();
 
@@ -448,6 +455,19 @@ module.exports = async function (app) {
             feedbackTimeout: 7000
         });
         const id = newTabData.newid;
+
+        // Extension init'ini bekle
+        const maxWait = 10000;
+        const checkInterval = 50;
+        const startTime = Date.now();
+        
+        while (!connections[id] && (Date.now() - startTime) < maxWait) {
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+        }
+        
+        if (!connections[id]) {
+            throw new Error(`Extension connection not established for tab ${id} within ${maxWait}ms`);
+        }
 
         return {
             id,
