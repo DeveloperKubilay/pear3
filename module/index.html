@@ -16,5 +16,41 @@
     </style>
     <h1>Pear Browser automation</h1>
     <h3>Developed by Kubilay</h3>
+    
+    <script>
+        // Goto watchdog - eğer 1 saniye içinde goto gelmezse f5 at
+        let gotoWatchdog = null;
+        let hasReceivedCommand = false;
+        
+        // Extension yüklenir yüklenmez watchdog başlat
+        setTimeout(() => {
+            if (!hasReceivedCommand) {
+                gotoWatchdog = setTimeout(() => {
+                    console.log('Goto watchdog triggered - reloading page');
+                    window.location.reload();
+                }, 1000);
+            }
+        }, 100);
+        
+        // Herhangi bir WebSocket mesajı gelirse watchdog'u iptal et
+        const originalWebSocket = window.WebSocket;
+        window.WebSocket = function(...args) {
+            const ws = new originalWebSocket(...args);
+            const originalOnMessage = ws.onmessage;
+            
+            ws.onmessage = function(event) {
+                hasReceivedCommand = true;
+                if (gotoWatchdog) {
+                    clearTimeout(gotoWatchdog);
+                    gotoWatchdog = null;
+                }
+                if (originalOnMessage) {
+                    return originalOnMessage.call(this, event);
+                }
+            };
+            
+            return ws;
+        };
+    </script>
 </body>
 </html>
