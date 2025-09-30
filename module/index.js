@@ -135,17 +135,92 @@ module.exports = async function (app) {
 
     async function asyncSystem(session, command, options = {}) {
         if (!command) command = session, session = null;
+        const maxAttempts = options.maxAttempts || 3;
+        const retryDelay = options.retryDelay || 100;
+        const feedbackTimeout = options.feedbackTimeout || 500;
+
         return new Promise((resolve, reject) => {
             if (!options.goto) command.id = id++;
             else command.id = session;
 
-            if (!session) firstConnection.send(JSON.stringify(command));
-            else if (connections[session]) {
+            let attempts = 0;
+            let responded = false;
+            let feedbackTimer;
+
+            const cleanup = () => {
+                if (feedbackTimer) clearTimeout(feedbackTimer);
+                delete AsyncPromieses[command.id];
+            };
+
+            const fail = (error) => {
+                cleanup();
+                reject(error);
+            };
+
+            const scheduleRetry = () => {
+                if (responded) return;
+                if (attempts >= maxAttempts) {
+                    fail(new Error(`Command ${command.id} failed after ${maxAttempts} attempts`));
+                    return;
+                }
+                setTimeout(dispatch, retryDelay);
+            };
+
+            const armFeedbackTimer = () => {
+                if (feedbackTimer) clearTimeout(feedbackTimer);
+                feedbackTimer = setTimeout(() => {
+                    scheduleRetry();
+                }, feedbackTimeout);
+            };
+
+            const dispatch = () => {
+                if (responded) return;
+                attempts += 1;
+
+                if (!session) {
+                    if (!firstConnection) {
+                        scheduleRetry();
+                        return;
+                    }
+                    try {
+                        firstConnection.send(JSON.stringify(command));
+                        armFeedbackTimer();
+                    } catch (error) {
+                        scheduleRetry();
+                    }
+                    return;
+                }
+
+                const target = connections[session];
+                if (!target) {
+                    scheduleRetry();
+                    return;
+                }
+
                 command.session = session;
-                connections[session].send(JSON.stringify(command));
-            }
-            AsyncPromieses[command.id] = { resolve, reject };
-        })
+                try {
+                    target.send(JSON.stringify(command));
+                    armFeedbackTimer();
+                } catch (error) {
+                    scheduleRetry();
+                }
+            };
+
+            AsyncPromieses[command.id] = {
+                resolve: (value) => {
+                    responded = true;
+                    cleanup();
+                    resolve(value);
+                },
+                reject: (error) => {
+                    responded = true;
+                    cleanup();
+                    reject(error);
+                }
+            };
+
+            dispatch();
+        });
     }
 
     // Generic method creator for standard operations
@@ -257,17 +332,35 @@ module.exports = async function (app) {
                 command.args = args[1] || [];
                 result = await asyncSystem(session, command);
                 break;
+
+            default:
+                result = await asyncSystem(session, command);
+                break;
         }
 
-        if (type === "screenshot" && result.screenshot) {
-            return Buffer.from(result.screenshot.split(',').pop(), 'base64');
+        if (type === 'setTimeout') {
+            return result;
         }
 
-        if (result[type] !== undefined) {
-            return result[type];
+        const payload = result ?? {};
+
+        if (type === 'screenshot' && payload.screenshot) {
+            return Buffer.from(payload.screenshot.split(',').pop(), 'base64');
         }
 
-        return result;
+        if (type === 'content' && payload.content !== undefined) {
+            return payload.content;
+        }
+
+        if (type === 'url' && payload.url !== undefined) {
+            return payload.url;
+        }
+
+        if (payload[type] !== undefined) {
+            return payload[type];
+        }
+
+        return payload;
     };
 
     app.newPage = async function () {
