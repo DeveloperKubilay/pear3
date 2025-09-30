@@ -3,7 +3,7 @@
 let ws = null;
 let wsQueue = [];
 
-ws = new WebSocket(`ws://${"http://localhost:9222".replace("http://", "").replace("https://", "")}`);
+ws = new WebSocket(`ws://${"http://localhost:8191".replace("http://", "").replace("https://", "")}`);
 ws.onopen = () => {
     while (wsQueue.length) ws.send(wsQueue.shift());
     console.log('WebSocket connection established');
@@ -414,14 +414,96 @@ function onMsg(event) {
         }
     }
 
-    else {
-        console.warn('Unknown action:', data.action || data.type);
+    // Evaluate
+    else if (data.type === "evaluate") {
+        try {
+            const func = new Function('return ' + data.func)();
+            const result = func(...data.args);
+            sendMessage(data, { action: 'evaluate', result });
+        } catch (error) {
+            sendMessage(data, { action: 'evaluate', error: error.message });
+        }
+    }
+
+    // Shadow click
+    else if (data.type === "shadowClick") {
+        try {
+            const element = document.querySelector(data.selector);
+            if (element && element.shadowRoot) {
+                const shadowElement = element.shadowRoot.querySelector(data.shadowSelector);
+                if (shadowElement) {
+                    shadowElement.click();
+                    sendMessage(data, { action: 'shadowClick', success: true });
+                } else {
+                    sendMessage(data, { action: 'shadowClick', success: false, error: 'Shadow element not found' });
+                }
+            } else {
+                sendMessage(data, { action: 'shadowClick', success: false, error: 'Element or shadowRoot not found' });
+            }
+        } catch (error) {
+            sendMessage(data, { action: 'shadowClick', success: false, error: error.message });
+        }
+    }
+
+    // Shadow query selector
+    else if (data.type === "shadowQuerySelector") {
+        try {
+            const element = document.querySelector(data.selector);
+            if (element && element.shadowRoot) {
+                const shadowElement = element.shadowRoot.querySelector(data.shadowSelector);
+                if (shadowElement) {
+                    sendMessage(data, {
+                        action: 'shadowQuerySelector',
+                        success: true,
+                        element: {
+                            tagName: shadowElement.tagName,
+                            id: shadowElement.id,
+                            className: shadowElement.className,
+                            textContent: shadowElement.textContent?.substring(0, 100)
+                        }
+                    });
+                } else {
+                    sendMessage(data, { action: 'shadowQuerySelector', success: false, error: 'Shadow element not found' });
+                }
+            } else {
+                sendMessage(data, { action: 'shadowQuerySelector', success: false, error: 'Element or shadowRoot not found' });
+            }
+        } catch (error) {
+            sendMessage(data, { action: 'shadowQuerySelector', success: false, error: error.message });
+        }
+    }
+
+    // Shadow get attribute
+    else if (data.type === "shadowGetAttribute") {
+        try {
+            const element = document.querySelector(data.selector);
+            if (element && element.shadowRoot) {
+                const shadowElement = element.shadowRoot.querySelector(data.shadowSelector);
+                if (shadowElement) {
+                    const value = shadowElement.getAttribute(data.attribute);
+                    sendMessage(data, {
+                        action: 'shadowGetAttribute',
+                        success: true,
+                        value: value,
+                        selector: data.selector,
+                        shadowSelector: data.shadowSelector,
+                        attribute: data.attribute
+                    });
+                } else {
+                    sendMessage(data, { action: 'shadowGetAttribute', success: false, error: 'Shadow element not found' });
+                }
+            } else {
+                sendMessage(data, { action: 'shadowGetAttribute', success: false, error: 'Element or shadowRoot not found' });
+            }
+        } catch (error) {
+            sendMessage(data, { action: 'shadowGetAttribute', success: false, error: error.message });
+        }
     }
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === "tabCreated") {
-        const id = window.location.href.startsWith("http://localhost:9222") ?
+        const id = window.location.href.startsWith("http://localhost:8191") ?
             window.location.hash?.split('=')[1] : msg.tabId;
         sendMessage(id, { action: 'init', id: id, newid: msg.tabId });
     }
