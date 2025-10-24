@@ -312,11 +312,6 @@ module.exports = async function (app) {
                 result = new Promise((resolve) => setTimeout(resolve, args[0]));
                 break;
 
-            case 'click':
-                command[0] = args[0]; // CSS selector for legacy click
-                result = await asyncSystem(session, command);
-                break;
-
             // Keyboard events
             case 'keypress':
             case 'keydown':
@@ -460,11 +455,11 @@ module.exports = async function (app) {
         const maxWait = 10000;
         const checkInterval = 50;
         const startTime = Date.now();
-        
+
         while (!connections[id] && (Date.now() - startTime) < maxWait) {
             await new Promise(resolve => setTimeout(resolve, checkInterval));
         }
-        
+
         if (!connections[id]) {
             throw new Error(`Extension connection not established for tab ${id} within ${maxWait}ms`);
         }
@@ -481,15 +476,13 @@ module.exports = async function (app) {
             screenshot: createMethod('screenshot')(id),
             content: createMethod('content')(id),
 
-            // Legacy click (maintained for compatibility)
-            click: createMethod('click')(id),
-
             // Keyboard events
             keypress: createMethod('keypress')(id),
             keydown: createMethod('keydown')(id),
             keyup: createMethod('keyup')(id),
 
             // Mouse events
+            click: createMethod('leftclick')(id),
             leftclick: createMethod('leftclick')(id),
             rightclick: createMethod('rightclick')(id),
             middleclick: createMethod('middleclick')(id),
