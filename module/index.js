@@ -23,7 +23,7 @@ module.exports = async function (app) {
         `--load-extension="${path.join(__dirname, 'extension')}"`,
         "--no-first-run",
         "--no-default-browser-check",
-        "--disable-features=Translate",
+        "--disable-features=Translate,LocalNetworkAccessChecks,LocalNetworkAccessChecksWebSockets,LocalNetworkAccessChecksWebTransport,LocalNetworkAccessChecksWebRTC",
         '--disable-translate',
         "--disable-infobars",
         "--disable-notifications",
