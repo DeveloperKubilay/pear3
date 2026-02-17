@@ -363,7 +363,21 @@ module.exports = async function (app) {
                 const options = args[1] || {}; // Options object
                 command.timeout = options.timeout !== undefined ? options.timeout : 30000;
                 command.checkInterval = options.checkInterval || 100;
-                result = await asyncSystem(session, command);
+                result = await asyncSystem(session, command, {
+                    // waitForSelector is intentionally long-running.
+                    feedbackTimeout: Math.max(command.timeout + 1000, 5000),
+                    overallTimeout: Math.max(command.timeout + 2000, 7000),
+                    maxAttempts: 1
+                });
+                break;
+
+            case 'screenshot':
+                result = await asyncSystem(session, command, {
+                    // html2canvas on heavy pages can take multiple seconds.
+                    feedbackTimeout: 30000,
+                    overallTimeout: 35000,
+                    maxAttempts: 1
+                });
                 break;
 
             case 'uploadFile':
