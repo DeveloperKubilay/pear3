@@ -7,15 +7,47 @@ const http = require('http');
 const os = require('os');
 const crypto = require('crypto');
 
+function findBrowserPath(chromeDir) {
+    if (!fs.existsSync(chromeDir)) return null;
+
+    const executableName = os.platform() === 'win32' ? 'chrome.exe' : 'chrome';
+    const stack = [chromeDir];
+
+    while (stack.length) {
+        const current = stack.pop();
+        let entries;
+        try {
+            entries = fs.readdirSync(current, { withFileTypes: true });
+        } catch (e) {
+            continue;
+        }
+
+        for (const entry of entries) {
+            const fullPath = path.join(current, entry.name);
+            if (entry.isDirectory()) {
+                stack.push(fullPath);
+            } else if (entry.isFile() && entry.name === executableName) {
+                return fullPath;
+            }
+        }
+    }
+
+    return null;
+}
+
 module.exports = async function (app) {
 
     if (!app.browserPath) {
-        if (!fs.existsSync(path.join(__dirname, 'chrome'))) await installer()
-        const file = fs.readdirSync(path.join(__dirname, 'chrome'))[0]
-        if (file == "chrome-win64") {
-            app.browserPath = path.join(__dirname, 'chrome', file, 'chrome.exe')
-        } else {
-            app.browserPath = path.join(__dirname, 'chrome', file, 'chrome')
+        const chromeDir = path.join(__dirname, 'chrome');
+        app.browserPath = findBrowserPath(chromeDir);
+
+        if (!app.browserPath) {
+            await installer({ installlog: app.installlog });
+            app.browserPath = findBrowserPath(chromeDir);
+        }
+
+        if (!app.browserPath) {
+            throw new Error(`Chrome executable not found under ${chromeDir}`);
         }
     }
 
@@ -28,6 +60,9 @@ module.exports = async function (app) {
         "--disable-infobars",
         "--disable-notifications",
         "--disable-popup-blocking",
+        "--disable-session-crashed-bubble",
+        "--password-store=basic",
+        ...(app.restoreSession ? [] : ["--disable-restore-session-state"]),
         "--start-maximized",
         ...(app.args ? app.args : [])
     ]
@@ -71,11 +106,69 @@ module.exports = async function (app) {
         }
         if (!fs.existsSync(app.profileDir)) fs.mkdirSync(app.profileDir, { recursive: true });
         args.push(`--user-data-dir="${app.profileDir}"`);
+
+        if (!app.restoreSession) {
+            const defaultDir = path.join(app.profileDir, 'Default');
+            if (fs.existsSync(defaultDir)) {
+                const sessionFiles = ['Current Session', 'Current Tabs', 'Last Session', 'Last Tabs'];
+                for (const sf of sessionFiles) {
+                    const fp = path.join(defaultDir, sf);
+                    try { if (fs.existsSync(fp)) fs.unlinkSync(fp); } catch (e) {}
+                }
+                const sessionsDir = path.join(defaultDir, 'Sessions');
+                try { if (fs.existsSync(sessionsDir)) fs.rmSync(sessionsDir, { recursive: true, force: true }); } catch (e) {}
+
+                const prefsPath = path.join(defaultDir, 'Preferences');
+                try {
+                    if (fs.existsSync(prefsPath)) {
+                        const prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf-8'));
+                        if (!prefs.session) prefs.session = {};
+                        prefs.session.restore_on_startup = 5;
+                        fs.writeFileSync(prefsPath, JSON.stringify(prefs));
+                    }
+                } catch (e) {}
+            }
+        }
     }
     if (app.muteaudio) args.push('--mute-audio');
 
     app.fullEndpoint = `${app.endpoint || "http://localhost"}:${app.port || 8191}`;
     args.push(app.fullEndpoint);
+
+    if (app.codes && Array.isArray(app.codes) && app.codes.length) {
+        const manifestPath = path.join(__dirname, 'extension', 'manifest.json');
+        let manifest = {};
+        if (fs.existsSync(manifestPath)) {
+            try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) { manifest = {}; }
+        }
+
+        if (!manifest.content_scripts) manifest.content_scripts = [{ matches: ["<all_urls>"], js: ["index.js"], run_at: "document_end" }];
+        let csEntry = manifest.content_scripts.find(cs => Array.isArray(cs.js) && cs.js.includes('index.js')) || manifest.content_scripts[0];
+        if (!csEntry.js) csEntry.js = [];
+
+        for (const codeRel of app.codes) {
+            if (!codeRel) continue;
+            let source = codeRel;
+            if (!path.isAbsolute(source)) source = path.join(process.cwd(), source);
+            if (!fs.existsSync(source)) {
+                const alt = path.join(__dirname, codeRel);
+                if (fs.existsSync(alt)) source = alt;
+            }
+            if (!fs.existsSync(source)) {
+                if (app.debug) console.warn('Pear: code file not found, skipping', codeRel);
+                continue;
+            }
+
+            const destName = path.basename(source);
+            const destPath = path.join(__dirname, 'extension', destName);
+            try { fs.copyFileSync(source, destPath); } catch (e) { if (app.debug) console.error('Pear: copy code failed', e); }
+
+            if (!csEntry.js.includes(destName)) csEntry.js.push(destName);
+        }
+
+        try { fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2)); } catch (e) { if (app.debug) console.error('Pear: write manifest failed', e); }
+    }
+
     const file = fs.readFileSync(path.join(__dirname, 'extension/Template_content.js'), 'utf-8');
     fs.writeFileSync(path.join(__dirname, 'extension/index.js'), file.replace(/__PEARSYSTEM_ENDPOINT__/g, app.fullEndpoint));
 
@@ -96,7 +189,7 @@ module.exports = async function (app) {
     var connections = {}
 
     wss.on('connection', (socket) => {
-        if (!firstConnection) {
+        if (!firstConnection || firstConnection.readyState !== 1) {
             if (app.debug) console.log('\x1b[32m%s\x1b[0m', 'PearSystem started');
             firstConnection = socket;
         }
@@ -104,6 +197,32 @@ module.exports = async function (app) {
             if (globalThis.___PearDebug) console.log('Received message:', Buffer(message).toString());
             const data = JSON.parse(message);
             if (data.action === false) return;
+
+            if (data.action === 'customEvent') {
+                console.log('\x1b[36m%s\x1b[0m', `📥 Custom Event: ${data.eventName}`, data.data);
+
+                if (app._eventListeners && app._eventListeners[data.eventName]) {
+                    app._eventListeners[data.eventName].forEach(callback => {
+                        try {
+                            callback(data.data, data.id);
+                        } catch (e) {
+                            if (app.debug) console.error('Event listener error:', e);
+                        }
+                    });
+                }
+
+                if (app._eventListeners && app._eventListeners['*']) {
+                    app._eventListeners['*'].forEach(callback => {
+                        try {
+                            callback(data.eventName, data.data, data.id);
+                        } catch (e) {
+                            if (app.debug) console.error('Wildcard listener error:', e);
+                        }
+                    });
+                }
+                return;
+            }
+
             if (data.action === 'init') {
                 if (data.newid !== undefined) connections[data.newid] = socket;
                 if (data.id !== undefined) connections[data.id] = socket;
@@ -119,6 +238,16 @@ module.exports = async function (app) {
             Object.keys(connections).forEach((key) => {
                 if (connections[key] === socket) delete connections[key];
             });
+
+            if (firstConnection === socket) {
+                firstConnection = null;
+                for (const client of wss.clients) {
+                    if (client.readyState === 1) {
+                        firstConnection = client;
+                        break;
+                    }
+                }
+            }
         });
     });
 
@@ -126,7 +255,9 @@ module.exports = async function (app) {
         if (app.debug) console.log('\x1b[33m%s\x1b[0m', `Starting PearSystem`);
     });
 
-    exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
+    let browserClosing = false;
+    const browserProcess = exec(`"${app.browserPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
+        if (browserClosing) return;
         if (error) {
             console.error(`Error executing browser: ${error.message}`);
             return;
@@ -286,17 +417,24 @@ module.exports = async function (app) {
         });
     }
 
-    // Generic method creator for standard operations
     const createMethod = (type) => (session) => async (...args) => {
         const command = { type };
         let result;
-        const requiresNavigationReady = !['goto', 'reload', 'setTimeout'].includes(type);
+        const requiresNavigationReady = !['goto', 'reload', 'setTimeout', 'close'].includes(type);
 
         if (requiresNavigationReady) {
             await waitForNavigationSettled(session);
         }
 
         switch (type) {
+            case 'close':
+                result = await asyncSystem(session, command, {
+                    expectAck: false,
+                    maxAttempts: 1
+                });
+                await new Promise(resolve => setTimeout(resolve, 300));
+                break;
+
             case 'goto':
                 command.url = args[0];
                 if (session !== null && session !== undefined) markNavigationPending(session);
@@ -457,45 +595,98 @@ module.exports = async function (app) {
         return payload;
     };
 
-    app.newPage = async function () {
-        const newTabData = await asyncSystem({ action: 'newTab' }, undefined, {
-            maxAttempts: 1,
-            retryDelay: 0,
-            feedbackTimeout: 7000
+    let _newPageQueue = Promise.resolve();
+
+    app.newPage = function () {
+        const pagePromise = _newPageQueue.then(async () => {
+            const connWaitStart = Date.now();
+            const connWaitTimeout = 15000;
+            while ((!firstConnection || firstConnection.readyState !== 1) && (Date.now() - connWaitStart) < connWaitTimeout) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            if (!firstConnection || firstConnection.readyState !== 1) {
+                throw new Error('No active browser connection available to open new tab');
+            }
+
+            const newTabData = await asyncSystem({ action: 'newTab' }, undefined, {
+                maxAttempts: 20,
+                retryDelay: 500,
+                feedbackTimeout: 10000,
+                overallTimeout: 45000
+            });
+
+            if (newTabData.success === false) {
+                throw new Error(newTabData.error || 'Could not create new tab');
+            }
+
+            const id = newTabData.newid ?? newTabData.id;
+            if (id === undefined || id === null) {
+                throw new Error('New tab did not return a session id');
+            }
+
+            const maxWait = 30000;
+            const checkInterval = 50;
+            const startTime = Date.now();
+
+            while (!connections[id] && (Date.now() - startTime) < maxWait) {
+                await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+
+            if (!connections[id]) {
+                throw new Error(`Extension connection not established for tab ${id} within ${maxWait}ms`);
+            }
+
+            return {
+                id,
+                goto: createMethod('goto')(id),
+                url: createMethod('url')(id),
+                reload: createMethod('reload')(id),
+                close: createMethod('close')(id),
+                screenshot: createMethod('screenshot')(id),
+                content: createMethod('content')(id),
+                keypress: createMethod('keypress')(id),
+                keydown: createMethod('keydown')(id),
+                keyup: createMethod('keyup')(id),
+                click: createMethod('leftclick')(id),
+                leftclick: createMethod('leftclick')(id),
+                rightclick: createMethod('rightclick')(id),
+                middleclick: createMethod('middleclick')(id),
+                dblclick: createMethod('dblclick')(id),
+                mousedown: createMethod('mousedown')(id),
+                mouseup: createMethod('mouseup')(id),
+                mousemove: createMethod('mousemove')(id),
+                scroll: createMethod('scroll')(id),
+                type: createMethod('type')(id),
+                directType: createMethod('directType')(id),
+                waitForSelector: createMethod('waitForSelector')(id),
+                uploadFile: createMethod('uploadFile')(id),
+                getAttribute: createMethod('getAttribute')(id),
+                getText: createMethod('getText')(id),
+                querySelector: createMethod('querySelector')(id),
+                shadowClick: createMethod('shadowClick')(id),
+                shadowQuerySelector: createMethod('shadowQuerySelector')(id),
+                shadowGetAttribute: createMethod('shadowGetAttribute')(id),
+                evaluate: createMethod('evaluate')(id),
+                setTimeout: createMethod('setTimeout')(id),
+            }
         });
-        const id = newTabData.newid;
 
-        // Extension init'ini bekle
-        const maxWait = 10000;
-        const checkInterval = 50;
-        const startTime = Date.now();
+        _newPageQueue = pagePromise.catch(() => {});
+        return pagePromise;
+    }
 
-        while (!connections[id] && (Date.now() - startTime) < maxWait) {
-            await new Promise(resolve => setTimeout(resolve, checkInterval));
-        }
-
-        if (!connections[id]) {
-            throw new Error(`Extension connection not established for tab ${id} within ${maxWait}ms`);
-        }
-
+    app.getPage = function (id) {
         return {
             id,
-            // Navigation
             goto: createMethod('goto')(id),
             url: createMethod('url')(id),
             reload: createMethod('reload')(id),
             close: createMethod('close')(id),
-
-            // Content & Screenshots
             screenshot: createMethod('screenshot')(id),
             content: createMethod('content')(id),
-
-            // Keyboard events
             keypress: createMethod('keypress')(id),
             keydown: createMethod('keydown')(id),
             keyup: createMethod('keyup')(id),
-
-            // Mouse events
             click: createMethod('leftclick')(id),
             leftclick: createMethod('leftclick')(id),
             rightclick: createMethod('rightclick')(id),
@@ -504,15 +695,9 @@ module.exports = async function (app) {
             mousedown: createMethod('mousedown')(id),
             mouseup: createMethod('mouseup')(id),
             mousemove: createMethod('mousemove')(id),
-
-            // Scroll
             scroll: createMethod('scroll')(id),
-
-            // Text input
             type: createMethod('type')(id),
             directType: createMethod('directType')(id),
-
-            // Utility methods
             waitForSelector: createMethod('waitForSelector')(id),
             uploadFile: createMethod('uploadFile')(id),
             getAttribute: createMethod('getAttribute')(id),
@@ -523,14 +708,62 @@ module.exports = async function (app) {
             shadowGetAttribute: createMethod('shadowGetAttribute')(id),
             evaluate: createMethod('evaluate')(id),
             setTimeout: createMethod('setTimeout')(id),
-        }
+        };
     }
 
     app.newTab = app.newPage
     app.setTimeout = (x) => new Promise((resolve) => setTimeout(resolve, x));
+
+    app._eventListeners = {};
+
+    app.on = function(eventName, callback) {
+        if (!app._eventListeners[eventName]) {
+            app._eventListeners[eventName] = [];
+        }
+        app._eventListeners[eventName].push(callback);
+        return app;
+    }
+
+    app.off = function(eventName, callback) {
+        if (!app._eventListeners[eventName]) return app;
+        if (!callback) {
+            delete app._eventListeners[eventName];
+        } else {
+            app._eventListeners[eventName] = app._eventListeners[eventName].filter(cb => cb !== callback);
+        }
+        return app;
+    }
+
+    app.once = function(eventName, callback) {
+        const wrapper = (...args) => {
+            callback(...args);
+            app.off(eventName, wrapper);
+        };
+        return app.on(eventName, wrapper);
+    }
+
     app.close = function () {
-        wss.close();
-        server.close();
+        return new Promise((resolve) => {
+            browserClosing = true;
+            for (const client of wss.clients) {
+                try { client.close(); } catch (e) {}
+            }
+            try { wss.close(); } catch (e) {}
+            try { server.close(); } catch (e) {}
+            if (browserProcess && browserProcess.pid) {
+                try {
+                    if (os.platform() === 'win32') {
+                        exec(`taskkill /pid ${browserProcess.pid} /T /F`, () => { resolve(); });
+                        return;
+                    } else {
+                        process.kill(-browserProcess.pid);
+                        resolve();
+                        return;
+                    }
+                } catch (e) { resolve(); return; }
+            }
+            resolve();
+        });
     }
 
     await new Promise(resolve => {

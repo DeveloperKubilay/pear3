@@ -37,16 +37,19 @@ async function getChromeUrlForPlatform() {
 let downloadDir = path.join(__dirname, 'chrome');
 let zipFilePath = '';
 
-// Download Chrome
-async function downloadChrome() {
+function shouldLog(options) {
+    return options.installlog !== false;
+}
+
+async function downloadChrome(options = {}) {
+    const log = shouldLog(options);
     const chromeUrl = await getChromeUrlForPlatform();
     downloadDir = path.join(__dirname, 'chrome');
     zipFilePath = path.join(downloadDir, path.basename(chromeUrl));
 
-    // Create directory
     function createDirectory() {
         if (!fs.existsSync(downloadDir)) {
-            console.log(`Creating directory: ${downloadDir}`);
+            if (log) console.log(`Creating directory: ${downloadDir}`);
             fs.mkdirSync(downloadDir, { recursive: true });
         }
     }
@@ -54,7 +57,7 @@ async function downloadChrome() {
     createDirectory();
 
     return new Promise((resolve, reject) => {
-        console.log(`Installing Chromium for ${os.platform()} from: ${chromeUrl}`);
+        if (log) console.log(`Installing Chromium for ${os.platform()} from: ${chromeUrl}`);
 
         const file = fs.createWriteStream(zipFilePath);
         https.get(chromeUrl, (response) => {
@@ -67,15 +70,17 @@ async function downloadChrome() {
 
             response.on('data', (chunk) => {
                 downloadedSize += chunk.length;
-                const percent = (downloadedSize / totalSize * 100).toFixed(2);
-                process.stdout.write(`Installing: ${percent}%\r`);
+                if (log && totalSize) {
+                    const percent = (downloadedSize / totalSize * 100).toFixed(2);
+                    process.stdout.write(`Installing: ${percent}%\r`);
+                }
             });
 
             response.pipe(file);
 
             file.on('finish', () => {
                 file.close(() => {
-                    console.log(`\nDownload completed: ${zipFilePath}`);
+                    if (log) console.log(`\nDownload completed: ${zipFilePath}`);
                     resolve();
                 });
             });
@@ -91,24 +96,21 @@ async function downloadChrome() {
     });
 }
 
-// Extract ZIP file (cross-platform)
-function extractZip() {
+function extractZip(options = {}) {
+    const log = shouldLog(options);
     return new Promise((resolve, reject) => {
-        console.log(`Extracting ZIP file: ${zipFilePath}`);
+        if (log) console.log(`Extracting ZIP file: ${zipFilePath}`);
 
         const platform = os.platform();
         let command, args;
 
         if (platform === 'win32') {
-            // Use PowerShell for Windows
             command = 'powershell.exe';
             args = ['-command', `Expand-Archive -Path "${zipFilePath}" -DestinationPath "${downloadDir}" -Force`];
         } else if (platform === 'darwin') {
-            // Use unzip command for macOS
             command = 'unzip';
             args = ['-o', zipFilePath, '-d', downloadDir];
         } else if (platform === 'linux') {
-            // Use unzip command for Linux
             command = 'unzip';
             args = ['-o', zipFilePath, '-d', downloadDir];
         } else {
@@ -117,24 +119,28 @@ function extractZip() {
 
         const process = spawn(command, args);
 
-        process.stdout.on('data', (data) => console.log(data.toString()));
-        process.stderr.on('data', (data) => console.error(data.toString()));
+        process.stdout.on('data', (data) => {
+            if (log) console.log(data.toString());
+        });
+        process.stderr.on('data', (data) => {
+            if (log) console.error(data.toString());
+        });
 
         process.on('close', (code) => {
             if (code !== 0) {
                 reject(new Error(`Extraction failed with code: ${code}`));
             } else {
-                console.log('Extraction completed');
+                if (log) console.log('Extraction completed');
                 resolve();
             }
         });
     });
 }
 
-// Clean up
-function cleanUp() {
+function cleanUp(options = {}) {
+    const log = shouldLog(options);
     return new Promise((resolve) => {
-        console.log(`Deleting ZIP file: ${zipFilePath}`);
+        if (log) console.log(`Deleting ZIP file: ${zipFilePath}`);
         fs.unlink(zipFilePath, (err) => {
             if (err) console.warn(`Warning: Could not delete ZIP file: ${err.message}`);
             resolve();
@@ -142,13 +148,12 @@ function cleanUp() {
     });
 }
 
-// Main installation function
-async function installChrome() {
+async function installChrome(options = {}) {
+    const log = shouldLog(options);
     try {
-        await downloadChrome();
-        await extractZip();
+        await downloadChrome(options);
+        await extractZip(options);
 
-        // macOS veya Linux ise, chrome dosyasını çalıştırılabilir yap
         const platform = os.platform();
         let chromeBinPath = null;
         if (platform === 'darwin') {
@@ -159,15 +164,15 @@ async function installChrome() {
         if (chromeBinPath && fs.existsSync(chromeBinPath)) {
             try {
                 fs.chmodSync(chromeBinPath, 0o755);
-                console.log(`Set executable permission: ${chromeBinPath}`);
+                if (log) console.log(`Set executable permission: ${chromeBinPath}`);
             } catch (err) {
                 console.warn(`Could not set executable permission: ${err.message}`);
             }
         }
-        
-        await cleanUp();
 
-        console.log('Chrome installation completed successfully!');
+        await cleanUp(options);
+
+        if (log) console.log('Chrome installation completed successfully!');
     } catch (error) {
         console.error(`Installation failed: ${error.message}`);
         process.exit(1);
