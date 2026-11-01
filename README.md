@@ -52,6 +52,14 @@ npm install pear3
 - `getText(selector)` → Get element text
 - `screenshot()` → Take screenshot
 
+
+## ⚠️ Disclaimer & Ethical Use
+
+PearSystem is designed for legitimate browser automation, end-to-end testing, and educational research.
+- **Authorized Testing Only:** Only run automated scripts on websites that you own, maintain, or have explicit permission to test.
+- **Respect Site Policies:** Always adhere to the target website's `robots.txt`, Terms of Service, and acceptable use policies.
+- **No Malicious Use:** The developer is not liable for any unauthorized access, scraping, or misuse conducted using this software.
+
 ## 👨‍💻 Contribution
 You can open pull requests and issues. All feedback is welcome!
 
